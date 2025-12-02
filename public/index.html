@@ -608,21 +608,6 @@ function hideThinking() {
   }
 }
 
-const thinkingIndicator = document.getElementById("thinkingIndicator");
-const sendBtn = document.getElementById("sendBtn"); // buton id'n farklıysa düzelt
-
-function showThinking() {
-  if (thinkingIndicator) {
-    thinkingIndicator.classList.remove("hidden");
-  }
-}
-
-function hideThinking() {
-  if (thinkingIndicator) {
-    thinkingIndicator.classList.add("hidden");
-  }
-}
-
 
     function addMessage(text, role) {
       if (emptyStateEl) emptyStateEl.style.display = "none";
@@ -787,7 +772,9 @@ function hideThinking() {
         alert("Sunucuya ulaşılamadı.");
       }
     }
-
+function sendMsg() {
+  sendMessage();
+}
 async function sendMessage() {
   if (!currentUserEmail) {
     addMessageBubble("assistant", "Önce sol taraftan giriş yapman gerekiyor.");
