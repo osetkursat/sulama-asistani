@@ -11,6 +11,8 @@ const PDFDocument = require("pdfkit");
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, "public")));
+
 
 const client = new OpenAI(); // apiKey .env'den
 
