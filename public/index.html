@@ -660,7 +660,7 @@
       btn.textContent = "Bağlanıyor...";
 
       try {
-        const res = await fetch("http://localhost:3000/login", {
+        const res = await fetch("/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
@@ -698,7 +698,7 @@
       btn.textContent = "Kaydediliyor...";
 
       try {
-        const res = await fetch("http://localhost:3000/register", {
+        const res = await fetch("/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
@@ -727,7 +727,7 @@
       }
 
       try {
-        const res = await fetch("http://localhost:3000/purchase", {
+        const res = await fetch("/purchase", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: loggedEmail, packageType }),
@@ -768,7 +768,7 @@
       msgInput.value = "";
 
       try {
-        const res = await fetch("http://localhost:3000/chat", {
+        const res = await fetch("/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -850,7 +850,7 @@
       addMessage(summary, "user");
 
       try {
-        const res = await fetch("http://localhost:3000/chat", {
+        const res = await fetch("/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -899,7 +899,7 @@
       }
 
       try {
-        const res = await fetch("http://localhost:3000/export-pdf", {
+        const res = await fetch("/export-pdf", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -937,7 +937,7 @@
 
       try {
         const res = await fetch(
-          "http://localhost:3000/projects?email=" + encodeURIComponent(loggedEmail)
+          "/projects?email=" + encodeURIComponent(loggedEmail)
         );
         const data = await res.json();
         if (res.ok) {
@@ -1016,7 +1016,7 @@
 
       try {
         const res = await fetch(
-          "http://localhost:3000/project?email=" +
+          "/project?email=" +
             encodeURIComponent(loggedEmail) +
             "&id=" +
             encodeURIComponent(id)
