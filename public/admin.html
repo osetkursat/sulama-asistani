@@ -193,7 +193,7 @@
       }
 
       try {
-        const res = await fetch("http://localhost:3000/admin/users", {
+        const res = await fetch("/admin/users", {
           headers: {
             "x-admin-key": ADMIN_KEY,
           },
@@ -317,7 +317,7 @@
       if (resetMemory) payload.resetMemory = true;
 
       try {
-        const res = await fetch("http://localhost:3000/admin/update-user", {
+        const res = await fetch("/admin/update-user", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
