@@ -525,10 +525,19 @@
         <div class="header-right">
           <div id="userLabel">Misafir</div>
           <div style="font-size: 11px; color: #6b7280">
-            Model: gpt-5.1
+            Model: Sulama Asistanı V1.0
           </div>
         </div>
       </header>
+
+<div id="thinkingIndicator" class="hidden flex items-center gap-2 text-xs text-sky-300 mb-3">
+  <div class="flex items-center gap-1">
+    <span class="w-2 h-2 rounded-full bg-sky-300 animate-bounce"></span>
+    <span class="w-2 h-2 rounded-full bg-sky-300 animate-bounce delay-150"></span>
+    <span class="w-2 h-2 rounded-full bg-sky-300 animate-bounce delay-300"></span>
+  </div>
+  <span>Sulama Asistanı düşünüyor...</span>
+</div>
 
       <section id="chat" class="chat">
         <div class="empty-state" id="emptyState">
@@ -585,6 +594,35 @@
     const remainingCountEl = document.getElementById("remainingCount");
     const projectListEl = document.getElementById("projectList");
     const projectsInfoEl = document.getElementById("projectsInfo");
+const thinkingIndicator = document.getElementById("thinkingIndicator");
+
+function showThinking() {
+  if (thinkingIndicator) {
+    thinkingIndicator.classList.remove("hidden");
+  }
+}
+
+function hideThinking() {
+  if (thinkingIndicator) {
+    thinkingIndicator.classList.add("hidden");
+  }
+}
+
+const thinkingIndicator = document.getElementById("thinkingIndicator");
+const sendBtn = document.getElementById("sendBtn"); // buton id'n farklıysa düzelt
+
+function showThinking() {
+  if (thinkingIndicator) {
+    thinkingIndicator.classList.remove("hidden");
+  }
+}
+
+function hideThinking() {
+  if (thinkingIndicator) {
+    thinkingIndicator.classList.add("hidden");
+  }
+}
+
 
     function addMessage(text, role) {
       if (emptyStateEl) emptyStateEl.style.display = "none";
@@ -750,58 +788,71 @@
       }
     }
 
-    async function sendMsg() {
-      if (!loggedEmail) {
-        alert("Önce giriş yapmalısın.");
-        return;
-      }
-      if (isSending) return;
+async function sendMessage() {
+  if (!currentUserEmail) {
+    addMessageBubble("assistant", "Önce sol taraftan giriş yapman gerekiyor.");
+    return;
+  }
 
-      const msg = msgInput.value.trim();
-      if (!msg) return;
+  const message = messageInput.value.trim();
+  if (!message) return;
 
-      isSending = true;
-      sendBtn.classList.add("disabled");
-      typingEl.textContent = "Sulama Asistanı düşünüyor...";
+  // Kullanıcının mesajını ekrana yaz
+  addMessageBubble("user", message);
+  messageInput.value = "";
 
-      addMessage(msg, "user");
-      msgInput.value = "";
+  try {
+    // 1) Düşünüyor animasyonunu aç
+    showThinking();
 
-      try {
-        const res = await fetch("/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: loggedEmail,
-            message: msg,
-            mode: "normal",
-          }),
-        });
-        const data = await res.json();
+    // 2) Butonu kilitle (isteğe bağlı ama şık)
+    if (sendBtn) {
+      sendBtn.disabled = true;
+      sendBtn.classList.add("opacity-60", "cursor-not-allowed");
+    }
 
-        if (data.error) {
-          addMessage(data.error, "bot");
-          lastBotReply = data.error;
-        } else {
-          addMessage(data.reply, "bot");
-          lastBotReply = data.reply;
-          if (typeof data.remaining === "number" && limitInfoEl) {
-            remaining = data.remaining;
-            limitInfoEl.style.display = "inline-flex";
-            remainingCountEl.textContent = remaining;
-          }
-        }
-      } catch (e) {
-        console.error(e);
-        const errText = "Sunucuya ulaşılamadı. Biraz sonra tekrar dene.";
-        addMessage(errText, "bot");
-        lastBotReply = errText;
-      } finally {
-        isSending = false;
-        typingEl.textContent = "";
-        if (loggedEmail) sendBtn.classList.remove("disabled");
+    // 3) Sunucuya isteği gönder
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: currentUserEmail,
+        message,
+        mode: currentMode,        // tasarım / normal moda göre
+        designData: currentDesignData, // tasarım modundaki form verileri
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data.error) {
+      addMessageBubble("assistant", `Hata: ${data.error}`);
+    } else {
+      addMessageBubble("assistant", data.reply);
+      if (typeof updateRemaining === "function") {
+        updateRemaining(data.remaining);
       }
     }
+  } catch (err) {
+    console.error(err);
+    addMessageBubble(
+      "assistant",
+      "Sunucuya ulaşırken bir hata oluştu, lütfen biraz sonra tekrar dene."
+    );
+  } finally {
+    // 4) Ne olursa olsun sonunda animasyonu kapat
+    hideThinking();
+
+    // 5) Butonu tekrar aç
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.classList.remove("opacity-60", "cursor-not-allowed");
+    }
+  }
+}
+
 
     async function sendDesign() {
       if (!loggedEmail) {
