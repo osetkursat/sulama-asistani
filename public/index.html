@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sulama Asistanı</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+    }
+    body {
+      background: #0f172a;
+      color: #e5e7eb;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .app {
+      width: 100%;
+      max-width: 1100px;
+      background: #020617;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      overflow: hidden;
+      border: 1px solid #1f2937;
+    }
+    @media (max-width: 900px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+    }
+    .sidebar {
+      background: radial-gradient(circle at top left, #22c55e33, #020617 60%);
+      border-right: 1px solid #111827;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 100vh;
+      overflow-y: auto;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #4ade80, #16a34a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      color: #022c22;
+      font-size: 18px;
+    }
+    .brand-text-title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .brand-text-sub {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+    .panel {
+      background: rgba(15, 23, 42, 0.8);
+      border-radius: 12px;
+      padding: 14px 16px;
+      border: 1px solid #1f2937;
+    }
+    .panel-title {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+      margin-bottom: 8px;
+    }
+    .login-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .input,
+    .select,
+    .textarea-small {
+      width: 100%;
+      padding: 7px 9px;
+      border-radius: 8px;
+      border: 1px solid #374151;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 12px;
+    }
+    .input:focus,
+    .select:focus,
+    .textarea-small:focus {
+      outline: none;
+      border-color: #22c55e;
+      box-shadow: 0 0 0 1px #22c55e55;
+    }
+    .textarea-small {
+      resize: vertical;
+      min-height: 40px;
+      max-height: 120px;
+    }
+    .label {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+    .label span {
+      color: #facc15;
+    }
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.15s ease, transform 0.05s ease,
+        box-shadow 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: linear-gradient(to right, #22c55e, #16a34a);
+      color: #022c22;
+      box-shadow: 0 10px 25px rgba(34, 197, 94, 0.3);
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 30px rgba(34, 197, 94, 0.4);
+    }
+    .btn-secondary {
+      background: #111827;
+      color: #e5e7eb;
+      border: 1px solid #1f2937;
+    }
+    .btn-secondary:hover {
+      background: #1f2937;
+    }
+    .btn-small {
+      padding: 4px 10px;
+      font-size: 11px;
+    }
+    .status {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 6px;
+    }
+    .status span.ok {
+      color: #4ade80;
+    }
+    .status span.bad {
+      color: #f97373;
+    }
+    .hints {
+      font-size: 12px;
+      color: #9ca3af;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 8px;
+    }
+    .hint-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #020617;
+      border-radius: 999px;
+      padding: 4px 8px;
+      border: 1px solid #1f2937;
+      margin-top: 4px;
+    }
+    .hint-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #22c55e;
+    }
+    .limit-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #022c22;
+      border-radius: 999px;
+      padding: 4px 8px;
+      border: 1px solid #16a34a;
+      font-size: 11px;
+      color: #bbf7d0;
+      margin-top: 4px;
+    }
+    .tag {
+      font-size: 11px;
+      color: #a5b4fc;
+    }
+    .project-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .project-item {
+      border-radius: 10px;
+      padding: 6px 8px;
+      border: 1px solid #1f2937;
+      background: #020617;
+      cursor: pointer;
+      transition: background 0.1s ease, border-color 0.1s ease;
+      font-size: 12px;
+    }
+    .project-item:hover {
+      background: #0b1120;
+      border-color: #22c55e55;
+    }
+    .project-title {
+      font-size: 12px;
+      color: #e5e7eb;
+    }
+    .project-meta {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+    .main {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: radial-gradient(circle at top, #1d283a, #020617 55%);
+    }
+    .header {
+      padding: 14px 18px;
+      border-bottom: 1px solid #111827;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .header-title {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      flex-direction: column;
+    }
+    .header-sub {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+    .header-right {
+      font-size: 12px;
+      color: #9ca3af;
+      text-align: right;
+    }
+    .chat {
+      flex: 1;
+      padding: 16px 18px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scroll-behavior: smooth;
+    }
+    .message {
+      max-width: 80%;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+    .msg-user {
+      margin-left: auto;
+      background: #16a34a;
+      color: #022c22;
+      border-bottom-right-radius: 4px;
+    }
+    .msg-bot {
+      margin-right: auto;
+      background: #020617;
+      border: 1px solid #1f2937;
+      border-bottom-left-radius: 4px;
+    }
+    .msg-meta {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+    .bubble-label {
+      font-size: 11px;
+      margin-bottom: 3px;
+      color: #9ca3af;
+    }
+    .empty-state {
+      text-align: center;
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 60px;
+    }
+    .empty-state strong {
+      color: #e5e7eb;
+    }
+    .footer {
+      border-top: 1px solid #111827;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: #020617;
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+    .msg-input {
+      flex: 1;
+      min-height: 40px;
+      max-height: 110px;
+      padding: 9px 11px;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 14px;
+      resize: vertical;
+    }
+    .msg-input:focus {
+      outline: none;
+      border-color: #22c55e;
+      box-shadow: 0 0 0 1px #22c55e55;
+    }
+    .typing {
+      font-size: 11px;
+      color: #9ca3af;
+      min-height: 14px;
+    }
+    .disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div>
+        <div class="brand">
+          <div class="brand-icon">SA</div>
+          <div>
+            <div class="brand-text-title">Sulama Asistanı</div>
+            <div class="brand-text-sub">
+              Villa & peyzaj sulama danışmanı
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hesap Paneli -->
+      <div class="panel">
+        <div class="panel-title">Hesap</div>
+        <div class="login-row">
+          <input
+            id="email"
+            class="input"
+            placeholder="E-posta"
+          />
+          <input
+            id="password"
+            class="input"
+            placeholder="Şifre"
+            type="password"
+          />
+          <div style="display:flex; gap:8px;">
+            <button id="loginBtn" class="btn btn-primary" style="flex:1;" onclick="login()">
+              Giriş yap
+            </button>
+            <button id="registerBtn" class="btn btn-secondary" style="flex:1;" onclick="registerUser()">
+              Kayıt ol
+            </button>
+          </div>
+          <div class="status" id="loginStatus">
+            Durum: <span class="bad">Bağlı değil</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Paketler Paneli -->
+      <div class="panel">
+        <div class="panel-title">Paketler (Demo)</div>
+        <div class="hints">
+          <span>Giriş yaptıktan sonra tıklarsan, o kullanıcıya soru hakkı eklenir. Gerçekte buraya ödeme entegrasyonu gelecek.</span>
+          <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+            <button class="btn btn-secondary" onclick="buyPackage('mini')">
+              Mini Paket • +50 soru
+            </button>
+            <button class="btn btn-secondary" onclick="buyPackage('pro')">
+              Pro Paket • +200 soru
+            </button>
+            <button class="btn btn-secondary" onclick="buyPackage('bayi')">
+              Bayi Paketi • +1000 soru
+            </button>
+          </div>
+
+          <div class="limit-badge" id="limitInfo" style="display:none;">
+            <span>🔓 Kalan soru: <span id="remainingCount">-</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Özel Tasarım Modu -->
+      <div class="panel">
+        <div class="panel-title">Özel Tasarım Modu</div>
+        <div class="hints">
+          <span class="tag">Formu doldur → “Tasarım oluştur” → Bot sana hazır proje şeması, malzeme listesi ve maliyet tahmini çıkarsın. Tasarım sonrası proje otomatik olarak "Projelerim" listene kaydedilir.</span>
+
+          <div class="label"><span>*</span> Bahçe alanı (m²)</div>
+          <input id="designArea" class="input" placeholder="Örn: 300" />
+
+          <div class="label">Bahçe şekli</div>
+          <select id="designShape" class="select">
+            <option value="dikdörtgen">Dikdörtgen</option>
+            <option value="kare">Kare</option>
+            <option value="L şekilli">L şekilli</option>
+            <option value="düzensiz">Düzensiz / organik</option>
+          </select>
+
+          <div class="label"><span>*</span> Su kaynağı</div>
+          <select id="designWater" class="select">
+            <option value="kuyu">Kuyu</option>
+            <option value="depo + hidrofor">Depo + hidrofor</option>
+            <option value="şebeke">Şebeke suyu</option>
+          </select>
+
+          <div class="label">Sistem tipi</div>
+          <select id="designSystem" class="select">
+            <option value="sprink (çim)">Sprink (çim alanlar için)</option>
+            <option value="damla (bitki / çalı)">Damla sulama (bitki/çalı)</option>
+            <option value="karışık">Karışık (çim + damla)</option>
+          </select>
+
+          <div class="label">Otomasyon</div>
+          <select id="designAutomation" class="select">
+            <option value="evet, tam otomatik">Evet, tam otomatik (kontrol ünitesi + vana)</option>
+            <option value="yarı otomatik">Yarı otomatik (manuel vana + saatli kullanım)</option>
+            <option value="manuel">Manuel kullanım</option>
+          </select>
+
+          <div class="label">Lokasyon (şehir / ilçe)</div>
+          <input id="designLocation" class="input" placeholder="Örn: Ankara / Gölbaşı" />
+
+          <div class="label">Özel notlar</div>
+          <textarea
+            id="designNotes"
+            class="textarea-small"
+            placeholder="Örn: Ön bahçe çim, yanlarda meyve ağaçları var. Borular mümkünse toprak altından gitsin."
+          ></textarea>
+
+          <button class="btn btn-primary" style="margin-top:8px;" onclick="sendDesign()">
+            Tasarım oluştur
+          </button>
+        </div>
+      </div>
+
+      <!-- Projelerim Paneli -->
+      <div class="panel">
+        <div class="panel-title">Projelerim</div>
+        <div class="hints">
+          <span>Burada bu hesapla oluşturduğun tasarım projelerini görürsün. Üzerine tıklayınca proje chat'e gelir ve PDF olarak indirebilirsin.</span>
+          <div class="row" style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
+            <button class="btn btn-secondary btn-small" onclick="loadProjects()">
+              Projeleri yükle
+            </button>
+            <span id="projectsInfo" style="font-size:11px; color:#9ca3af;">Henüz yüklenmedi.</span>
+          </div>
+          <div id="projectList" class="project-list"></div>
+        </div>
+      </div>
+
+      <!-- İpuçları -->
+      <div class="panel">
+        <div class="panel-title">İpuçları</div>
+        <div class="hints">
+          <div>Deneyebileceğin örnek sorular:</div>
+          <div class="hint-pill">
+            <div class="hint-dot"></div>
+            <span>“400 m² bahçem var, kuyu suyu ile otomatik sulama tasarla.”</span>
+          </div>
+          <div class="hint-pill">
+            <div class="hint-dot"></div>
+            <span>“Rain Bird ile Hunter karşılaştır, villa bahçesine hangisi?”</span>
+          </div>
+          <div class="hint-pill">
+            <div class="hint-dot"></div>
+            <span>“32’lik PE boru ile 6 sprinklere kadar kaç metre gidebilirim?”</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="header">
+        <div class="header-title">
+          <span>Chat • Sulama Asistanı</span>
+          <span class="header-sub">
+            Türkiye şartlarına göre sulama hesabı, ürün eşleştirme ve maliyet analizleri.
+          </span>
+        </div>
+        <div class="header-right">
+          <div id="userLabel">Misafir</div>
+          <div style="font-size: 11px; color: #6b7280">
+            Model: gpt-5.1
+          </div>
+        </div>
+      </header>
+
+      <section id="chat" class="chat">
+        <div class="empty-state" id="emptyState">
+          <strong>Merhaba,</strong><br /><br />
+          Alt kısımdan klasik soru sorabilir veya soldaki
+          <strong>Özel Tasarım Modu</strong> ile tüm bahçeni doldurup
+          komple proje isteyebilirsin. 💧<br /><br />
+          Oluşturduğun projeleri “Projelerim” panelinden tekrar açıp PDF olarak indirebilirsin.
+        </div>
+      </section>
+
+      <footer class="footer">
+        <div class="input-row">
+          <textarea
+            id="msg"
+            class="msg-input"
+            rows="1"
+            placeholder="Klasik soru sormak için yaz: Örn. 'Kuyu suyunda hangi filtreyi önerirsin?'"
+          ></textarea>
+          <button
+            id="sendBtn"
+            class="btn btn-primary disabled"
+            onclick="sendMsg()"
+          >
+            Gönder
+          </button>
+        </div>
+        <div class="typing" id="typing"></div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:4px;">
+          <button class="btn btn-secondary" onclick="downloadPdf()">
+            Son cevabı PDF indir
+          </button>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    let loggedEmail = "";
+    let remaining = null;
+    let isSending = false;
+    let lastBotReply = ""; // Son bot cevabını tut
+    let projectsCache = []; // Proje listesi cache
+
+    const chatEl = document.getElementById("chat");
+    const emptyStateEl = document.getElementById("emptyState");
+    const loginStatusEl = document.getElementById("loginStatus");
+    const userLabelEl = document.getElementById("userLabel");
+    const sendBtn = document.getElementById("sendBtn");
+    const msgInput = document.getElementById("msg");
+    const typingEl = document.getElementById("typing");
+    const limitInfoEl = document.getElementById("limitInfo");
+    const remainingCountEl = document.getElementById("remainingCount");
+    const projectListEl = document.getElementById("projectList");
+    const projectsInfoEl = document.getElementById("projectsInfo");
+
+    function addMessage(text, role) {
+      if (emptyStateEl) emptyStateEl.style.display = "none";
+
+      const wrapper = document.createElement("div");
+      wrapper.style.display = "flex";
+      wrapper.style.flexDirection = "column";
+      wrapper.style.alignItems = role === "user" ? "flex-end" : "flex-start";
+
+      const label = document.createElement("div");
+      label.className = "bubble-label";
+      label.textContent = role === "user" ? "Sen" : "Sulama Asistanı";
+      wrapper.appendChild(label);
+
+      const msg = document.createElement("div");
+      msg.className = "message " + (role === "user" ? "msg-user" : "msg-bot");
+      msg.textContent = text;
+      wrapper.appendChild(msg);
+
+      const meta = document.createElement("div");
+      meta.className = "msg-meta";
+      const time = new Date().toLocaleTimeString("tr-TR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      meta.textContent = time;
+      wrapper.appendChild(meta);
+
+      chatEl.appendChild(wrapper);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    function setLoggedIn(email, remainingVal) {
+      loggedEmail = email;
+      loginStatusEl.innerHTML = 'Durum: <span class="ok">Bağlı</span>';
+      userLabelEl.textContent = email;
+      sendBtn.classList.remove("disabled");
+      if (typeof remainingVal === "number") {
+        remaining = remainingVal;
+        if (limitInfoEl) {
+          limitInfoEl.style.display = "inline-flex";
+          remainingCountEl.textContent = remaining;
+        }
+      }
+      // Girişte projeleri yüklemek istersen:
+      // loadProjects();
+    }
+
+    function setLoggedOut() {
+      loggedEmail = "";
+      loginStatusEl.innerHTML = 'Durum: <span class="bad">Bağlı değil</span>';
+      userLabelEl.textContent = "Misafir";
+      sendBtn.classList.add("disabled");
+      if (limitInfoEl) {
+        limitInfoEl.style.display = "none";
+      }
+      projectsCache = [];
+      if (projectListEl) projectListEl.innerHTML = "";
+      if (projectsInfoEl) projectsInfoEl.textContent = "Henüz yüklenmedi.";
+    }
+
+    async function login() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      if (!email || !password) {
+        alert("E-posta ve şifre boş olamaz.");
+        return;
+      }
+
+      const btn = document.getElementById("loginBtn");
+      btn.classList.add("disabled");
+      btn.textContent = "Bağlanıyor...";
+
+      try {
+        const res = await fetch("http://localhost:3000/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setLoggedIn(email, data.remaining);
+          btn.textContent = "Giriş yapıldı";
+        } else {
+          setLoggedOut();
+          btn.textContent = "Tekrar dene";
+          alert(data.message || "Hatalı giriş.");
+        }
+      } catch (e) {
+        console.error(e);
+        setLoggedOut();
+        btn.textContent = "Tekrar dene";
+        alert("Sunucuya bağlanılamadı.");
+      } finally {
+        btn.classList.remove("disabled");
+      }
+    }
+
+    async function registerUser() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      if (!email || !password) {
+        alert("Kayıt için e-posta ve şifre zorunlu.");
+        return;
+      }
+
+      const btn = document.getElementById("registerBtn");
+      btn.classList.add("disabled");
+      btn.textContent = "Kaydediliyor...";
+
+      try {
+        const res = await fetch("http://localhost:3000/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          alert("Kayıt başarılı. Şimdi giriş yapılıyor.");
+          await login();
+        } else {
+          alert(data.message || "Kayıt başarısız.");
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Sunucuya ulaşılamadı.");
+      } finally {
+        btn.classList.remove("disabled");
+        btn.textContent = "Kayıt ol";
+      }
+    }
+
+    async function buyPackage(packageType) {
+      if (!loggedEmail) {
+        alert("Önce giriş yapmalısın.");
+        return;
+      }
+
+      try {
+        const res = await fetch("http://localhost:3000/purchase", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: loggedEmail, packageType }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          alert(data.message || "Paket eklendi.");
+          if (typeof data.remaining === "number" && limitInfoEl) {
+            remaining = data.remaining;
+            limitInfoEl.style.display = "inline-flex";
+            remainingCountEl.textContent = remaining;
+          }
+        } else {
+          alert(data.message || "Paket eklenemedi.");
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Sunucuya ulaşılamadı.");
+      }
+    }
+
+    async function sendMsg() {
+      if (!loggedEmail) {
+        alert("Önce giriş yapmalısın.");
+        return;
+      }
+      if (isSending) return;
+
+      const msg = msgInput.value.trim();
+      if (!msg) return;
+
+      isSending = true;
+      sendBtn.classList.add("disabled");
+      typingEl.textContent = "Sulama Asistanı düşünüyor...";
+
+      addMessage(msg, "user");
+      msgInput.value = "";
+
+      try {
+        const res = await fetch("http://localhost:3000/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: loggedEmail,
+            message: msg,
+            mode: "normal",
+          }),
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          addMessage(data.error, "bot");
+          lastBotReply = data.error;
+        } else {
+          addMessage(data.reply, "bot");
+          lastBotReply = data.reply;
+          if (typeof data.remaining === "number" && limitInfoEl) {
+            remaining = data.remaining;
+            limitInfoEl.style.display = "inline-flex";
+            remainingCountEl.textContent = remaining;
+          }
+        }
+      } catch (e) {
+        console.error(e);
+        const errText = "Sunucuya ulaşılamadı. Biraz sonra tekrar dene.";
+        addMessage(errText, "bot");
+        lastBotReply = errText;
+      } finally {
+        isSending = false;
+        typingEl.textContent = "";
+        if (loggedEmail) sendBtn.classList.remove("disabled");
+      }
+    }
+
+    async function sendDesign() {
+      if (!loggedEmail) {
+        alert("Önce giriş yapmalısın.");
+        return;
+      }
+      if (isSending) return;
+
+      const area = document.getElementById("designArea").value.trim();
+      const shape = document.getElementById("designShape").value;
+      const water = document.getElementById("designWater").value;
+      const system = document.getElementById("designSystem").value;
+      const automation = document.getElementById("designAutomation").value;
+      const location = document.getElementById("designLocation").value.trim();
+      const notes = document.getElementById("designNotes").value.trim();
+
+      if (!area || !water) {
+        alert("En azından alan (m²) ve su kaynağını doldur.");
+        return;
+      }
+
+      const designData = {
+        alan_m2: area,
+        bahce_sekli: shape,
+        su_kaynagi: water,
+        sistem_tipi: system,
+        otomasyon: automation,
+        lokasyon: location,
+        notlar: notes,
+      };
+
+      const summary =
+        "Özel tasarım isteği:\n" +
+        `- Alan: ${area} m²\n` +
+        `- Şekil: ${shape}\n` +
+        `- Su kaynağı: ${water}\n` +
+        `- Sistem tipi: ${system}\n` +
+        `- Otomasyon: ${automation}\n` +
+        (location ? `- Lokasyon: ${location}\n` : "") +
+        (notes ? `- Notlar: ${notes}` : "");
+
+      isSending = true;
+      typingEl.textContent = "Tasarıma göre proje hazırlanıyor...";
+      sendBtn.classList.add("disabled");
+
+      addMessage(summary, "user");
+
+      try {
+        const res = await fetch("http://localhost:3000/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: loggedEmail,
+            mode: "design",
+            designData,
+            message: "",
+          }),
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          addMessage(data.error, "bot");
+          lastBotReply = data.error;
+        } else {
+          addMessage(data.reply, "bot");
+          lastBotReply = data.reply;
+          if (typeof data.remaining === "number" && limitInfoEl) {
+            remaining = data.remaining;
+            limitInfoEl.style.display = "inline-flex";
+            remainingCountEl.textContent = remaining;
+          }
+          // Yeni proje kaydedilmiş olacağı için listeyi tazelemek mantıklı:
+          loadProjects(false);
+        }
+      } catch (e) {
+        console.error(e);
+        const errText = "Sunucuya ulaşılamadı. Biraz sonra tekrar dene.";
+        addMessage(errText, "bot");
+        lastBotReply = errText;
+      } finally {
+        isSending = false;
+        typingEl.textContent = "";
+        if (loggedEmail) sendBtn.classList.remove("disabled");
+      }
+    }
+
+    async function downloadPdf() {
+      if (!loggedEmail) {
+        alert("PDF almak için önce giriş yapmalısın.");
+        return;
+      }
+      if (!lastBotReply) {
+        alert("Önce bir tasarım veya cevap oluştur, sonra PDF al.");
+        return;
+      }
+
+      try {
+        const res = await fetch("http://localhost:3000/export-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: loggedEmail,
+            title: "Sulama Proje Raporu",
+            content: lastBotReply,
+          }),
+        });
+
+        if (!res.ok) {
+          alert("PDF oluşturulurken hata oluştu.");
+          return;
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "sulama-proje-raporu.pdf";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.error(e);
+        alert("PDF alınırken hata oluştu.");
+      }
+    }
+
+    async function loadProjects(showAlert = true) {
+      if (!loggedEmail) {
+        alert("Projeleri görmek için önce giriş yap.");
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          "http://localhost:3000/projects?email=" + encodeURIComponent(loggedEmail)
+        );
+        const data = await res.json();
+        if (res.ok) {
+          projectsCache = data.projects || [];
+          renderProjects();
+          if (projectsInfoEl) {
+            if (!projectsCache.length) {
+              projectsInfoEl.textContent = "Bu hesapla henüz proje oluşturulmamış.";
+            } else {
+              projectsInfoEl.textContent =
+                projectsCache.length + " proje listelendi.";
+            }
+          }
+          if (showAlert) {
+            alert("Projeler yüklendi.");
+          }
+        } else {
+          alert(data.error || "Projeler alınamadı.");
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Sunucuya ulaşılamadı.");
+      }
+    }
+
+    function renderProjects() {
+      if (!projectListEl) return;
+      projectListEl.innerHTML = "";
+
+      if (!projectsCache.length) {
+        const empty = document.createElement("div");
+        empty.style.fontSize = "11px";
+        empty.style.color = "#9ca3af";
+        empty.textContent = "Kayıtlı proje yok.";
+        projectListEl.appendChild(empty);
+        return;
+      }
+
+      projectsCache
+        .slice()
+        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+        .forEach((p) => {
+          const item = document.createElement("div");
+          item.className = "project-item";
+          item.onclick = () => openProject(p.id);
+
+          const title = document.createElement("div");
+          title.className = "project-title";
+          title.textContent = p.title || "İsimsiz proje";
+
+          const meta = document.createElement("div");
+          meta.className = "project-meta";
+          const dateStr = p.createdAt
+            ? new Date(p.createdAt).toLocaleString("tr-TR", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "";
+          meta.textContent = `${dateStr} • ${p.type || "tasarım"}`;
+
+          item.appendChild(title);
+          item.appendChild(meta);
+
+          projectListEl.appendChild(item);
+        });
+    }
+
+    async function openProject(id) {
+      if (!loggedEmail) {
+        alert("Önce giriş yap.");
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          "http://localhost:3000/project?email=" +
+            encodeURIComponent(loggedEmail) +
+            "&id=" +
+            encodeURIComponent(id)
+        );
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.error || "Proje alınamadı.");
+          return;
+        }
+
+        const project = data.project;
+        const infoText =
+          "Kayıtlı proje açıldı:\n" +
+          (project.title || "") +
+          (project.rawInput && project.rawInput.alan_m2
+            ? `\nAlan: ${project.rawInput.alan_m2} m²`
+            : "");
+
+        addMessage(infoText, "user");
+        addMessage(project.content, "bot");
+        lastBotReply = project.content;
+      } catch (e) {
+        console.error(e);
+        alert("Proje alınırken hata oluştu.");
+      }
+    }
+
+    msgInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMsg();
+      }
+    });
+  </script>
+</body>
+</html>

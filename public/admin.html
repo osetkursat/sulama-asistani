@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sulama Asistanı - Admin Paneli</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      background: #020617;
+      color: #e5e7eb;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+    .sub {
+      font-size: 13px;
+      color: #9ca3af;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: #0f172a;
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid #1f2937;
+      margin-bottom: 16px;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .input {
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #374151;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 13px;
+    }
+    .input:focus {
+      outline: none;
+      border-color: #22c55e;
+      box-shadow: 0 0 0 1px #22c55e55;
+    }
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: background 0.15s ease, transform 0.05s ease,
+        box-shadow 0.15s ease;
+    }
+    .btn-primary {
+      background: linear-gradient(to right, #22c55e, #16a34a);
+      color: #022c22;
+      box-shadow: 0 10px 25px rgba(34, 197, 94, 0.3);
+    }
+    .btn-secondary {
+      background: #111827;
+      color: #e5e7eb;
+      border: 1px solid #1f2937;
+    }
+    .btn-danger {
+      background: #b91c1c;
+      color: #fee2e2;
+    }
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 8px 6px;
+      border-bottom: 1px solid #1f2937;
+      text-align: left;
+    }
+    th {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+    }
+    tr:hover td {
+      background: #020617;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+    }
+    .badge-ok {
+      background: #022c22;
+      color: #bbf7d0;
+      border: 1px solid #16a34a;
+    }
+    .badge-warn {
+      background: #451a03;
+      color: #fed7aa;
+      border: 1px solid #c2410c;
+    }
+    .status-text {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Sulama Asistanı • Admin Paneli</h1>
+  <div class="sub">
+    Buradan kullanıcıların limitlerini görebilir, artırabilir ve hafızalarını sıfırlayabilirsin.
+  </div>
+
+  <div class="card">
+    <div>Admin anahtarını gir (ADMIN_KEY):</div>
+    <div class="row">
+      <input id="adminKey" class="input" placeholder="ADMIN_KEY" style="min-width: 260px;" />
+      <button class="btn btn-primary" onclick="connectAdmin()">Bağlan</button>
+    </div>
+    <div id="adminStatus" class="status-text">Durum: Bağlı değil</div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <strong>Kullanıcılar</strong>
+        <div class="status-text" id="userInfo">Henüz veri yok.</div>
+      </div>
+      <button class="btn btn-secondary" onclick="loadUsers()">Yenile</button>
+    </div>
+
+    <table id="usersTable" style="display:none;">
+      <thead>
+        <tr>
+          <th>E-posta</th>
+          <th>Kullanım</th>
+          <th>Kalan</th>
+          <th>Hafıza</th>
+          <th>Limit Güncelle</th>
+          <th>İşlemler</th>
+        </tr>
+      </thead>
+      <tbody id="usersBody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    let ADMIN_KEY = "";
+    let USERS = [];
+
+    function setAdminStatus(text, ok = false) {
+      const el = document.getElementById("adminStatus");
+      el.textContent = "Durum: " + text;
+      el.style.color = ok ? "#4ade80" : "#9ca3af";
+    }
+
+    async function connectAdmin() {
+      const key = document.getElementById("adminKey").value.trim();
+      if (!key) {
+        alert("Admin anahtarını gir.");
+        return;
+      }
+      ADMIN_KEY = key;
+      setAdminStatus("Anahtar kaydedildi, kullanıcılar yükleniyor...", true);
+      await loadUsers();
+    }
+
+    async function loadUsers() {
+      if (!ADMIN_KEY) {
+        alert("Önce admin anahtarını gir.");
+        return;
+      }
+
+      try {
+        const res = await fetch("http://localhost:3000/admin/users", {
+          headers: {
+            "x-admin-key": ADMIN_KEY,
+          },
+        });
+
+        if (!res.ok) {
+          setAdminStatus("Yetkisiz veya hata (" + res.status + ")", false);
+          if (res.status === 401) {
+            alert("Admin anahtarı hatalı.");
+          }
+          return;
+        }
+
+        const data = await res.json();
+        USERS = data.users || [];
+
+        renderUsers();
+        setAdminStatus("Bağlı", true);
+      } catch (e) {
+        console.error(e);
+        setAdminStatus("Sunucuya ulaşılamadı.", false);
+      }
+    }
+
+    function renderUsers() {
+      const table = document.getElementById("usersTable");
+      const body = document.getElementById("usersBody");
+      const info = document.getElementById("userInfo");
+
+      body.innerHTML = "";
+
+      if (!USERS.length) {
+        table.style.display = "none";
+        info.textContent = "Kayıtlı kullanıcı yok.";
+        return;
+      }
+
+      table.style.display = "table";
+      info.textContent = `${USERS.length} kullanıcı listelendi.`;
+
+      USERS.forEach((u) => {
+        const tr = document.createElement("tr");
+
+        // E-posta
+        const tdEmail = document.createElement("td");
+        tdEmail.textContent = u.email;
+        tr.appendChild(tdEmail);
+
+        // Kullanım
+        const tdUsage = document.createElement("td");
+        tdUsage.textContent = `${u.used} / ${u.limit}`;
+        tr.appendChild(tdUsage);
+
+        // Kalan
+        const tdRemaining = document.createElement("td");
+        const badge = document.createElement("span");
+        badge.className = "badge " + (u.remaining > 0 ? "badge-ok" : "badge-warn");
+        badge.textContent = u.remaining > 0 ? `${u.remaining} soru` : "Bitti";
+        tdRemaining.appendChild(badge);
+        tr.appendChild(tdRemaining);
+
+        // Hafıza
+        const tdMemory = document.createElement("td");
+        tdMemory.textContent = `${u.memoryCount} mesaj`;
+        tr.appendChild(tdMemory);
+
+        // Limit güncelle
+        const tdLimit = document.createElement("td");
+        const inputLimit = document.createElement("input");
+        inputLimit.type = "number";
+        inputLimit.className = "input";
+        inputLimit.style.width = "80px";
+        inputLimit.value = u.limit;
+        tdLimit.appendChild(inputLimit);
+        tr.appendChild(tdLimit);
+
+        // İşlemler
+        const tdActions = document.createElement("td");
+        const btnSave = document.createElement("button");
+        btnSave.className = "btn btn-primary";
+        btnSave.textContent = "Kaydet";
+        btnSave.onclick = () => updateUser(u.email, Number(inputLimit.value), false, false);
+
+        const btnResetUsage = document.createElement("button");
+        btnResetUsage.className = "btn btn-secondary";
+        btnResetUsage.style.marginLeft = "4px";
+        btnResetUsage.textContent = "Kullanımı sıfırla";
+        btnResetUsage.onclick = () => updateUser(u.email, null, true, false);
+
+        const btnResetMemory = document.createElement("button");
+        btnResetMemory.className = "btn btn-danger";
+        btnResetMemory.style.marginLeft = "4px";
+        btnResetMemory.textContent = "Hafızayı sıfırla";
+        btnResetMemory.onclick = () => {
+          if (confirm(`${u.email} hafızasını sıfırlamak istediğine emin misin?`)) {
+            updateUser(u.email, null, false, true);
+          }
+        };
+
+        tdActions.appendChild(btnSave);
+        tdActions.appendChild(btnResetUsage);
+        tdActions.appendChild(btnResetMemory);
+
+        tr.appendChild(tdActions);
+
+        body.appendChild(tr);
+      });
+    }
+
+    async function updateUser(email, limit, resetUsed, resetMemory) {
+      if (!ADMIN_KEY) {
+        alert("Önce admin anahtarını gir.");
+        return;
+      }
+
+      const payload = { email };
+      if (typeof limit === "number" && !Number.isNaN(limit)) {
+        payload.limit = limit;
+      }
+      if (resetUsed) payload.resetUsed = true;
+      if (resetMemory) payload.resetMemory = true;
+
+      try {
+        const res = await fetch("http://localhost:3000/admin/update-user", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-key": ADMIN_KEY,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          alert(data.error || "Güncelleme başarısız.");
+          return;
+        }
+
+        // USERS listesini güncelle
+        const updated = data.user;
+        const idx = USERS.findIndex((u) => u.email === updated.email);
+        if (idx !== -1) {
+          USERS[idx] = updated;
+        }
+
+        renderUsers();
+        alert("Kullanıcı güncellendi.");
+      } catch (e) {
+        console.error(e);
+        alert("Sunucuya ulaşılamadı.");
+      }
+    }
+  </script>
+</body>
+</html>
