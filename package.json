@@ -13,8 +13,8 @@
     "body-parser": "^2.2.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "express": "^5.1.0",
-    "openai": "^6.9.1",
-    "pdfkit": "^0.15.0"
+    "express": "^5.2.1",
+    "openai": "^6.10.0",
+    "pdfkit": "^0.15.2"
   }
 }

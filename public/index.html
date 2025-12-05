@@ -2,23 +2,17 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <title>Sulama Asistanı</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sulama Asistanı</title>
+
   <style>
     :root {
-      --bg-dark: #020617;
-      --bg-panel: #020817;
-      --bg-panel-soft: #020b1f;
-      --accent: #22c55e;
-      --accent-soft: #15803d;
-      --accent-text: #bbf7d0;
-      --text-main: #e5e7eb;
-      --text-muted: #9ca3af;
-      --text-soft: #6b7280;
-      --border-soft: #1f2937;
-      --error: #f97373;
-      --warning: #facc15;
-      --info: #38bdf8;
+      --green-dark: #1b5e20;
+      --green-light: #e8f5e9;
+      --bg: #f5f7fa;
+      --border: #c8e6c9;
+      --text-main: #222;
+      --text-sub: #555;
     }
 
     * {
@@ -27,1289 +21,355 @@
 
     body {
       margin: 0;
-      min-height: 100vh;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
-      background: radial-gradient(circle at top, #0b1220 0, #020617 55%, #000 100%);
-      color: var(--text-main);
-      display: flex;
-      align-items: stretch;
-      justify-content: center;
-    }
-
-    .app-shell {
-      width: 100%;
-      max-width: 1440px;
-      margin: 12px;
-      display: flex;
-      gap: 12px;
-    }
-
-    .card {
-      background: linear-gradient(145deg, #020617, #020b1f);
-      border-radius: 18px;
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.7);
-      padding: 18px;
-    }
-
-    .sidebar {
-      width: 340px;
-      min-width: 300px;
+      background: var(--bg);
+      font-family: Arial, sans-serif;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      height: 100vh;
+      color: var(--text-main);
     }
 
-    .sidebar-header {
+    header {
+      padding: 10px 15px;
+      background: var(--green-dark);
+      color: #fff;
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 10px;
+      justify-content: space-between;
+      gap: 10px;
     }
 
-    .avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 999px;
-      background: radial-gradient(circle at 30% 0, #4ade80, #16a34a);
+    .brand {
       display: flex;
       align-items: center;
-      justify-content: center;
-      color: #022c22;
-      font-weight: 700;
+      gap: 8px;
       font-size: 18px;
+      font-weight: bold;
     }
 
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: rgba(15, 118, 110, 0.25);
-      color: #a5f3fc;
-      font-size: 11px;
-      gap: 4px;
-    }
-
-    .badge span.icon {
-      font-size: 13px;
-    }
-
-    .section-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: #9ca3af;
-      letter-spacing: 0.02em;
-      text-transform: uppercase;
-      margin-bottom: 8px;
-    }
-
-    .input-group {
+    .brand span.logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid #fff;
       display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-bottom: 8px;
-    }
-
-    label {
-      font-size: 12px;
-      color: var(--text-soft);
-    }
-
-    input[type="text"],
-    input[type="password"],
-    input[type="number"],
-    select,
-    textarea {
-      width: 100%;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid rgba(31, 41, 55, 0.9);
-      background: rgba(15, 23, 42, 0.95);
-      color: var(--text-main);
-      font-size: 13px;
-      outline: none;
-    }
-
-    input:focus,
-    select:focus,
-    textarea:focus {
-      border-color: rgba(56, 189, 248, 0.9);
-      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4);
-    }
-
-    textarea {
-      resize: vertical;
-      min-height: 60px;
-      max-height: 120px;
-    }
-
-    .btn {
-      border-radius: 999px;
-      padding: 8px 14px;
-      border: none;
-      font-size: 13px;
-      cursor: pointer;
-      font-weight: 600;
-      display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      transition: all 0.12s ease-out;
+      font-size: 16px;
+    }
+
+    .user-info {
+      font-size: 12px;
+      text-align: right;
+      opacity: 0.9;
+    }
+
+    #chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+    }
+
+    .msg {
+      max-width: 80%;
+      margin-bottom: 12px;
+      padding: 10px 13px;
+      border-radius: 12px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      font-size: 14px;
+    }
+
+    .user-msg {
+      background: #dcedc8;
+      margin-left: auto;
+      border-bottom-right-radius: 2px;
+    }
+
+    .bot-msg {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-bottom-left-radius: 2px;
+    }
+
+    .msg small {
+      display: block;
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    #thinking-container {
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 10px;
+    }
+
+    #thinking {
+      display: none;
+      font-size: 13px;
+      color: var(--text-sub);
+      font-style: italic;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    #thinking span.label {
       white-space: nowrap;
     }
 
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent), var(--accent-soft));
-      color: #022c22;
-      box-shadow: 0 12px 24px rgba(34, 197, 94, 0.4);
+    .dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--text-sub);
+      animation: blink 1.3s infinite ease-in-out;
     }
 
-    .btn-primary:hover {
-      filter: brightness(1.08);
-      transform: translateY(-1px);
-      box-shadow: 0 16px 30px rgba(34, 197, 94, 0.6);
-    }
-
-    .btn-outline {
-      background: transparent;
-      color: var(--text-main);
-      border: 1px solid rgba(148, 163, 184, 0.65);
-    }
-
-    .btn-outline:hover {
-      border-color: rgba(248, 250, 252, 0.9);
-      background: rgba(15, 23, 42, 0.9);
-    }
-
-    .btn-sm {
-      padding: 5px 10px;
-      font-size: 11px;
-      border-radius: 999px;
-    }
-
-    .btn-ghost {
-      background: transparent;
-      border: none;
-      color: var(--text-soft);
-    }
-
-    .btn-ghost:hover {
-      color: var(--text-main);
-      background: rgba(15, 23, 42, 0.85);
-    }
-
-    .btn[disabled] {
-      opacity: 0.6;
-      cursor: default;
-      box-shadow: none;
-      transform: none;
-    }
-
-    .pill-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 6px;
-      flex-wrap: wrap;
-    }
-
-    .pill {
-      border-radius: 999px;
-      padding: 6px 10px;
-      font-size: 11px;
-      border: 1px solid rgba(55, 65, 81, 0.9);
-      background: rgba(15, 23, 42, 0.95);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      flex: 1 1 auto;
-      min-width: 0;
-    }
-
-    .pill span.label {
-      color: var(--text-soft);
-      font-weight: 500;
-    }
-
-    .pill span.count {
-      font-size: 11px;
-      color: var(--accent-text);
-    }
-
-    .pill span.price {
-      font-size: 11px;
-      color: #fbbf24;
-    }
-
-    .divider {
-      border-bottom: 1px solid rgba(31, 41, 55, 0.9);
-      margin: 10px 0 6px;
-    }
-
-    /* Tasarım Modu paneli */
-
-    .design-panel {
-      margin-top: 4px;
-      padding: 10px;
-      border-radius: 14px;
-      border: 1px solid rgba(30, 64, 175, 0.7);
-      background: radial-gradient(circle at top, #111827, #020617);
-    }
-
-    .design-panel small {
-      font-size: 11px;
-      color: var(--text-soft);
-    }
-
-    .design-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    .design-row-3 {
-      display: grid;
-      grid-template-columns: 1.2fr 1.2fr 1fr;
-      gap: 8px;
-    }
-
-    /* Projeler paneli */
-
-    .projects-panel {
-      margin-top: 6px;
-      padding: 8px;
-      border-radius: 14px;
-      border: 1px solid rgba(31, 41, 55, 0.9);
-      background: rgba(15, 23, 42, 0.9);
-      max-height: 180px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .projects-list {
-      margin-top: 4px;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-
-    .project-item {
-      padding: 6px 8px;
-      border-radius: 10px;
-      border: 1px solid rgba(31, 41, 55, 0.9);
-      background: rgba(15, 23, 42, 0.95);
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-bottom: 4px;
-    }
-
-    .project-item-title {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-main);
-    }
-
-    .project-item-meta {
-      font-size: 11px;
-      color: var(--text-soft);
-      display: flex;
-      justify-content: space-between;
-      gap: 6px;
-      align-items: center;
-    }
-
-    /* Chat alanı */
-
-    .chat-shell {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .chat-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 6px;
-    }
-
-    .chat-title {
-      font-size: 17px;
-      font-weight: 600;
-    }
-
-    .chat-subtitle {
-      font-size: 12px;
-      color: var(--text-soft);
-    }
-
-    .chat-meta {
-      font-size: 11px;
-      color: var(--text-soft);
-      text-align: right;
-    }
-
-    .chat-card {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      border-radius: 18px;
-      padding: 14px;
-      background: radial-gradient(circle at top left, #020617, #000);
-      border: 1px solid rgba(30, 64, 175, 0.8);
-      min-height: 0;
-    }
-
-    .thinking {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: #7dd3fc;
-      margin-bottom: 6px;
-    }
-
-    .thinking.hidden {
-      display: none;
-    }
-
-    .thinking .dots {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .thinking .dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 999px;
-      background: #7dd3fc;
-      animation: dotBounce 0.9s infinite ease-in-out;
-      opacity: 0.3;
-    }
-
-    .thinking .dot:nth-child(2) {
+    .dot:nth-child(2) {
       animation-delay: 0.15s;
     }
 
-    .thinking .dot:nth-child(3) {
+    .dot:nth-child(3) {
       animation-delay: 0.3s;
     }
 
-    @keyframes dotBounce {
-      0%, 80%, 100% {
-        transform: translateY(0);
-        opacity: 0.3;
-      }
-      40% {
-        transform: translateY(-4px);
-        opacity: 1;
-      }
+    @keyframes blink {
+      0%, 20% { opacity: 0.2; transform: translateY(0); }
+      40% { opacity: 1; transform: translateY(-1px); }
+      60% { opacity: 0.6; transform: translateY(0); }
+      100% { opacity: 0.2; transform: translateY(0); }
     }
 
-    .chat-messages {
-      flex: 1;
-      overflow-y: auto;
-      padding-right: 6px;
-      padding-bottom: 6px;
-      font-size: 13px;
-    }
-
-    .chat-messages::-webkit-scrollbar,
-    .projects-list::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .chat-messages::-webkit-scrollbar-thumb,
-    .projects-list::-webkit-scrollbar-thumb {
-      background: rgba(30, 64, 175, 0.7);
-      border-radius: 999px;
-    }
-
-    .message {
-      margin-bottom: 8px;
+    #input-area {
       display: flex;
-    }
-
-    .message.user {
-      justify-content: flex-end;
-    }
-
-    .message.assistant {
-      justify-content: flex-start;
-    }
-
-    .bubble {
-      max-width: 80%;
-      padding: 8px 10px;
-      border-radius: 14px;
-      border: 1px solid rgba(31, 41, 55, 0.9);
-      background: rgba(15, 23, 42, 0.95);
-      white-space: pre-wrap;
-      line-height: 1.5;
-      font-size: 13px;
-    }
-
-    .message.user .bubble {
-      background: rgba(22, 163, 74, 0.9);
-      border-color: rgba(34, 197, 94, 0.9);
-      color: #022c22;
-    }
-
-    .message.system .bubble {
-      background: rgba(37, 99, 235, 0.2);
-      border-color: rgba(59, 130, 246, 0.6);
-      color: #bfdbfe;
-    }
-
-    .bubble-header {
-      font-weight: 600;
-      margin-bottom: 4px;
-      font-size: 12px;
-    }
-
-    .chat-footer {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      border-top: 1px solid rgba(31, 41, 55, 0.9);
-      padding-top: 8px;
-      margin-top: 4px;
-    }
-
-    .chat-footer-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 11px;
-      color: var(--text-soft);
-    }
-
-    .chat-input-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
+      padding: 10px;
+      background: var(--green-light);
+      border-top: 1px solid var(--border);
       gap: 8px;
-    }
-
-    .chat-input {
-      padding: 8px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(31, 41, 55, 0.9);
-      background: rgba(15, 23, 42, 0.95);
-      color: var(--text-main);
-      font-size: 13px;
-      outline: none;
-    }
-
-    .chat-input:focus {
-      border-color: rgba(59, 130, 246, 0.85);
-      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.4);
-    }
-
-    /* small helpers */
-
-    .flex {
-      display: flex;
-    }
-
-    .flex-between {
-      display: flex;
-      justify-content: space-between;
       align-items: center;
     }
 
-    .text-error {
-      color: var(--error);
-      font-size: 11px;
+    #messageInput {
+      flex: 1;
+      padding: 9px 10px;
+      border: 1px solid #aaa;
+      border-radius: 6px;
+      font-size: 14px;
+      resize: none;
+      max-height: 120px;
+      min-height: 36px;
     }
 
-    .text-warning {
-      color: var(--warning);
-      font-size: 11px;
+    #sendBtn {
+      padding: 10px 15px;
+      background: var(--green-dark);
+      color: #fff;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
     }
 
-    .pill-remaining {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
+    #sendBtn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #logoutBtn {
       font-size: 11px;
-      padding: 3px 8px;
+      padding: 4px 8px;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
       border-radius: 999px;
-      border: 1px solid rgba(34, 197, 94, 0.7);
-      color: var(--accent-text);
-      background: rgba(22, 163, 74, 0.12);
+      border: 1px solid rgba(255,255,255,0.3);
+      cursor: pointer;
     }
 
-    .hidden {
-      display: none;
-    }
-
-    @media (max-width: 980px) {
-      .app-shell {
-        flex-direction: column;
+    @media (max-width: 600px) {
+      .msg {
+        max-width: 100%;
       }
-      .sidebar {
-        width: 100%;
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .user-info {
+        text-align: left;
       }
     }
   </style>
 </head>
 <body>
-<div class="app-shell">
-  <!-- Sol panel -->
-  <div class="sidebar card">
-    <div class="sidebar-header">
-      <div class="avatar">SA</div>
-      <div>
-        <div style="font-weight: 600; font-size: 15px;">Sulama Asistanı</div>
-        <div style="font-size: 12px; color: var(--text-soft);">
-          Villa &amp; peyzaj sulama danışmanı
-        </div>
-      </div>
-    </div>
-    <div class="badge">
-      <span class="icon">💧</span>
-      <span>Türkiye şartlarına göre otomatik sulama hesabı</span>
-    </div>
 
-    <!-- Hesap -->
-    <div style="margin-top: 12px;">
-      <div class="section-title">Hesap</div>
-      <div class="input-group">
-        <label for="email">E-posta</label>
-        <input id="email" type="text" placeholder="ornek@mail.com" />
-      </div>
-      <div class="input-group">
-        <label for="password">Şifre</label>
-        <input id="password" type="password" placeholder="••••••" />
-      </div>
-      <div class="pill-row">
-        <button id="loginBtn" class="btn btn-primary" style="flex: 1;">
-          Giriş yap
-        </button>
-        <button id="registerBtn" class="btn btn-outline" style="flex: 1;">
-          Kayıt ol
-        </button>
-      </div>
-      <div style="margin-top: 6px; font-size: 11px; color: var(--text-soft);">
-        <span id="authStatus">Henüz giriş yapılmadı.</span>
-      </div>
-      <div style="margin-top: 6px;">
-        <span id="remainingBadge" class="pill-remaining hidden">
-          Kalan soru: <span id="remainingCount">0</span>
-        </span>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- Paketler -->
-    <div>
-      <div class="section-title">Soru paketleri</div>
-      <div class="pill">
-        <span class="label">Mini Paket</span>
-        <span class="price">+50 soru</span>
-        <button class="btn btn-sm btn-outline" data-package="mini">
-          Satın al
-        </button>
-      </div>
-      <div class="pill">
-        <span class="label">Pro Paket</span>
-        <span class="price">+200 soru</span>
-        <button class="btn btn-sm btn-outline" data-package="pro">
-          Satın al
-        </button>
-      </div>
-      <div class="pill">
-        <span class="label">Bayi Paketi</span>
-        <span class="price">+1000 soru</span>
-        <button class="btn btn-sm btn-outline" data-package="bayi">
-          Satın al
-        </button>
-      </div>
-      <div style="margin-top: 6px; font-size: 11px; color: var(--text-soft);">
-        <span id="packageInfo">Ödemeler şimdilik demo. Gerçek satış için toptansulama.com entegrasyonu yapılacak.</span>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- Özel Tasarım Modu -->
-    <div class="design-panel">
-      <div style="display: flex; justify-content: space-between; align-items: baseline;">
-        <div style="font-size: 13px; font-weight: 600; color: #e5e7eb;">
-          Özel Tasarım Modu
-        </div>
-        <div style="font-size: 11px; color: #93c5fd;">
-          Bahçe sulama projesi &amp; malzeme listesi
-        </div>
-      </div>
-      <small>
-        Formu doldur → <b>“Tasarım oluştur”</b> → Bot sana hazır proje şeması, malzeme listesi ve maliyet tahmini çıkarsın. Tasarım, “Projelerim” paneline otomatik kaydedilir.
-      </small>
-
-      <div class="input-group" style="margin-top: 6px;">
-        <label for="designArea">Bahçe alanı (m²)</label>
-        <input id="designArea" type="number" value="200" />
-      </div>
-
-      <div class="design-row">
-        <div class="input-group">
-          <label for="designShape">Bahçe şekli</label>
-          <select id="designShape">
-            <option>Dikdörtgen</option>
-            <option>Kare</option>
-            <option>L şeklinde</option>
-            <option>Düzensiz</option>
-          </select>
-        </div>
-        <div class="input-group">
-          <label for="designWater">Su kaynağı</label>
-          <select id="designWater">
-            <option>Kuyu</option>
-            <option>Şebeke</option>
-            <option>Depo + hidrofor</option>
-            <option>Dere / gölet</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="design-row-3">
-        <div class="input-group">
-          <label for="designSystem">Sistem tipi</label>
-          <select id="designSystem">
-            <option>Sprink (çim alanlar için)</option>
-            <option>Damlama (ağaç / çit)</option>
-            <option>Karışık (sprink + damla)</option>
-          </select>
-        </div>
-        <div class="input-group">
-          <label for="designAutomation">Otomasyon</label>
-          <select id="designAutomation">
-            <option>Evet, tam otomatik (kontrol ünitesi + vana)</option>
-            <option>Zaman ayarlı priz / manuel vana</option>
-            <option>Şimdilik manuel</option>
-          </select>
-        </div>
-        <div class="input-group">
-          <label for="designSlope">Eğim durumu</label>
-          <select id="designSlope">
-            <option>Düz</option>
-            <option>Hafif eğimli</option>
-            <option>Çok eğimli</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="input-group">
-        <label for="designLocation">Lokasyon (şehir / ilçe)</label>
-        <input id="designLocation" type="text" placeholder="Örn: Ankara / Gölbaşı" />
-      </div>
-      <div class="input-group">
-        <label for="designNotes">Özel notlar</label>
-        <textarea id="designNotes" placeholder="Ön bahçe çim, yanlarda meyve ağaçları var. Borular mümkünse toprak altında olsun."></textarea>
-      </div>
-
-      <button id="designBtn" class="btn btn-primary" style="width: 100%; margin-top: 4px;">
-        Tasarım oluştur
-      </button>
-      <div style="margin-top: 4px; font-size: 11px; color: var(--text-soft);" id="designInfo">
-        Tasarıma göre proje hazırlanıyor...
-      </div>
-    </div>
-
-    <!-- Projelerim -->
-    <div class="projects-panel">
-      <div class="flex-between">
-        <div class="section-title" style="margin-bottom: 0;">Projelerim</div>
-        <button id="refreshProjectsBtn" class="btn btn-ghost btn-sm">Yenile</button>
-      </div>
-      <div style="font-size: 11px; color: var(--text-soft);">
-        Özel tasarım modundan ürettiğin projeleri burada tekrar açıp PDF olarak indirebilirsin.
-      </div>
-      <div id="projectsList" class="projects-list"></div>
-      <div id="projectsEmpty" style="font-size: 11px; color: var(--text-soft);">
-        Henüz kayıtlı projen yok.
-      </div>
-    </div>
+<header>
+  <div class="brand">
+    <span class="logo">💧</span>
+    <span>Sulama Asistanı</span>
   </div>
+  <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+    <div class="user-info" id="userInfo">Giriş yapılıyor...</div>
+    <button id="logoutBtn">Çıkış yap</button>
+  </div>
+</header>
 
-  <!-- Sağ panel / Chat -->
-  <div class="chat-shell card">
-    <div class="chat-header">
-      <div>
-        <div class="chat-title">Chat · Sulama Asistanı</div>
-        <div class="chat-subtitle">
-          Türkiye şartlarına göre sulama hesabı, ürün eşleştirme ve maliyet analizleri.
-        </div>
-      </div>
-      <div class="chat-meta">
-        <div id="currentUserLabel">Giriş yapılmadı</div>
-        <div>Model: gpt-5.1</div>
-      </div>
-    </div>
+<div id="chat-container"></div>
 
-    <div class="chat-card">
-      <!-- Düşünüyor göstergesi -->
-      <div id="thinkingIndicator" class="thinking hidden">
-        <div class="dots">
-          <span class="dot"></span>
-          <span class="dot"></span>
-          <span class="dot"></span>
-        </div>
-        <span>Sulama Asistanı düşünüyor...</span>
-      </div>
-
-      <!-- Mesajlar -->
-      <div id="chatMessages" class="chat-messages">
-        <div class="message assistant">
-          <div class="bubble">
-            <div class="bubble-header">Merhaba,</div>
-            Villa veya peyzaj bahçen için sulama sistemi kurmak istiyorsan, doğru yerdesin. <br/><br/>
-            Soldaki formdan <b>giriş yap</b>, ardından:
-            <ul>
-              <li>Alt kısımdan klasik soru sorabilir,</li>
-              <li>Veya sol taraftaki <b>Özel Tasarım Modu</b> ile bahçene özel komple proje çıkartabilirsin.</li>
-            </ul>
-            Oluşturduğum projeleri “Projelerim” panelinden tekrar açıp <b>PDF</b> olarak indirebilirsin. 💧
-          </div>
-        </div>
-      </div>
-
-      <!-- Alt bar -->
-      <div class="chat-footer">
-        <div class="chat-footer-top">
-          <div style="font-size: 11px; color: var(--text-soft);">
-            Klasik soru sormak için yaz: Örn. <i>“Kuyu suyunda hangi filtreyi önerirsin?”</i>
-          </div>
-        </div>
-        <div class="chat-input-row">
-          <input
-            id="messageInput"
-            type="text"
-            class="chat-input"
-            placeholder="Mesajını yaz ve Enter’a bas..."
-          />
-          <button id="sendBtn" class="btn btn-primary" onclick="sendMsg()">
-            Gönder
-          </button>
-        </div>
-      </div>
-    </div>
+<div id="thinking-container">
+  <div id="thinking">
+    <span class="label">Sulama Asistanı düşünüyor</span>
+    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
   </div>
 </div>
 
+<div id="input-area">
+  <textarea id="messageInput" placeholder="Bahçeni anlat, gerisini Sulama Asistanı halletsin..." rows="1"></textarea>
+  <button id="sendBtn">Gönder</button>
+</div>
+
 <script>
-  // ---- Global değişkenler ----
-  let currentUserEmail = null;
-  let currentMode = "normal"; // "normal" veya "design"
-  let currentDesignData = null;
+  let loggedUser = null;
 
-  const emailInput = document.getElementById("email");
-  const passwordInput = document.getElementById("password");
-  const loginBtn = document.getElementById("loginBtn");
-  const registerBtn = document.getElementById("registerBtn");
-  const authStatus = document.getElementById("authStatus");
-  const currentUserLabel = document.getElementById("currentUserLabel");
-  const remainingBadge = document.getElementById("remainingBadge");
-  const remainingCountEl = document.getElementById("remainingCount");
-  const messageInput = document.getElementById("messageInput");
+  const chatContainer = document.getElementById("chat-container");
+  const input = document.getElementById("messageInput");
   const sendBtn = document.getElementById("sendBtn");
-  const chatMessages = document.getElementById("chatMessages");
-  const packageButtons = document.querySelectorAll("button[data-package]");
-  const thinkingIndicator = document.getElementById("thinkingIndicator");
+  const thinking = document.getElementById("thinking");
+  const userInfo = document.getElementById("userInfo");
+  const logoutBtn = document.getElementById("logoutBtn");
 
-  const designArea = document.getElementById("designArea");
-  const designShape = document.getElementById("designShape");
-  const designWater = document.getElementById("designWater");
-  const designSystem = document.getElementById("designSystem");
-  const designAutomation = document.getElementById("designAutomation");
-  const designSlope = document.getElementById("designSlope");
-  const designLocation = document.getElementById("designLocation");
-  const designNotes = document.getElementById("designNotes");
-  const designBtn = document.getElementById("designBtn");
-  const designInfo = document.getElementById("designInfo");
-
-  const projectsList = document.getElementById("projectsList");
-  const projectsEmpty = document.getElementById("projectsEmpty");
-  const refreshProjectsBtn = document.getElementById("refreshProjectsBtn");
-
-  // ---- Thinking indicator helpers ----
-  function showThinking() {
-    if (thinkingIndicator) {
-      thinkingIndicator.classList.remove("hidden");
-    }
-  }
-
-  function hideThinking() {
-    if (thinkingIndicator) {
-      thinkingIndicator.classList.add("hidden");
-    }
-  }
-
-  // ---- UI helpers ----
-
-  function updateAuthUI() {
-    if (currentUserEmail) {
-      authStatus.textContent = "Giriş yapıldı.";
-      currentUserLabel.textContent = currentUserEmail;
-      loginBtn.textContent = "Giriş yapıldı";
-      loginBtn.disabled = true;
-      registerBtn.disabled = true;
+  // Sayfa yüklenince kullanıcıyı localStorage'dan al
+  window.onload = () => {
+    const saved = localStorage.getItem("sulamaUser");
+    if (saved) {
+      loggedUser = JSON.parse(saved);
+      userInfo.textContent =
+        loggedUser.email +
+        " • Kalan soru: " +
+        (loggedUser.remaining ?? (loggedUser.limit - loggedUser.used));
     } else {
-      authStatus.textContent = "Henüz giriş yapılmadı.";
-      currentUserLabel.textContent = "Giriş yapılmadı";
-      loginBtn.textContent = "Giriş yap";
-      loginBtn.disabled = false;
-      registerBtn.disabled = false;
+      alert("Önce giriş yapmalısınız.");
+      window.location.href = "/login.html";
     }
-  }
+  };
 
-  function updateRemaining(remaining) {
-    if (typeof remaining !== "number") return;
-    if (remaining < 0) remaining = 0;
-    remainingCountEl.textContent = remaining;
-    remainingBadge.classList.remove("hidden");
-  }
-
-  function addMessageBubble(role, text, options = {}) {
-    const msgEl = document.createElement("div");
-    msgEl.className = "message " + role;
-
-    const bubble = document.createElement("div");
-    bubble.className = "bubble";
-
-    if (options.header) {
-      const header = document.createElement("div");
-      header.className = "bubble-header";
-      header.textContent = options.header;
-      bubble.appendChild(header);
-    }
-
-    bubble.appendChild(document.createTextNode(text));
-    msgEl.appendChild(bubble);
-    chatMessages.appendChild(msgEl);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  }
-
-  // ---- Auth işlemleri ----
-
-  loginBtn.addEventListener("click", handleLogin);
-  registerBtn.addEventListener("click", handleRegister);
-
-  async function handleLogin() {
-    const email = emailInput.value.trim();
-    const password = passwordInput.value.trim();
-
-    if (!email || !password) {
-      authStatus.textContent = "E-posta ve şifre zorunlu.";
-      authStatus.classList.add("text-error");
-      return;
-    }
-
-    authStatus.textContent = "Giriş yapılıyor...";
-    authStatus.classList.remove("text-error");
-
-    try {
-      const res = await fetch("/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-      if (!data.success) {
-        authStatus.textContent = data.message || "Giriş başarısız.";
-        authStatus.classList.add("text-error");
-        return;
-      }
-
-      currentUserEmail = data.email;
-      updateAuthUI();
-      updateRemaining(data.remaining);
-      authStatus.classList.remove("text-error");
-      authStatus.textContent = "Giriş başarılı.";
-      loadProjects();
-    } catch (err) {
-      console.error(err);
-      authStatus.textContent = "Sunucuya ulaşılamadı.";
-      authStatus.classList.add("text-error");
-    }
-  }
-
-  async function handleRegister() {
-    const email = emailInput.value.trim();
-    const password = passwordInput.value.trim();
-
-    if (!email || !password) {
-      authStatus.textContent = "E-posta ve şifre zorunlu.";
-      authStatus.classList.add("text-error");
-      return;
-    }
-
-    authStatus.textContent = "Kayıt yapılıyor...";
-    authStatus.classList.remove("text-error");
-
-    try {
-      const res = await fetch("/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        authStatus.textContent = data.message || "Kayıt başarısız.";
-        authStatus.classList.add("text-error");
-        return;
-      }
-      authStatus.textContent = "Kayıt başarılı. Şimdi giriş yapabilirsin.";
-    } catch (err) {
-      console.error(err);
-      authStatus.textContent = "Sunucuya ulaşılamadı.";
-      authStatus.classList.add("text-error");
-    }
-  }
-
-  // ---- Paket satın alma ----
-
-  packageButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const pkg = btn.getAttribute("data-package");
-      purchasePackage(pkg);
-    });
+  logoutBtn.addEventListener("click", () => {
+    localStorage.removeItem("sulamaUser");
+    window.location.href = "/login.html";
   });
 
-  async function purchasePackage(packageType) {
-    if (!currentUserEmail) {
-      addMessageBubble(
-        "assistant",
-        "Önce sol taraftan giriş yapman gerekiyor."
-      );
+  // Mesajı chat ekranına ekle
+  function addMessage(text, sender) {
+    const div = document.createElement("div");
+    div.className = "msg " + (sender === "user" ? "user-msg" : "bot-msg");
+    div.textContent = text;
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  // Streaming esnasında tek bot balonunu güncelle
+  let streamingDiv = null;
+  function updateStreamingMessage(text) {
+    if (!streamingDiv) {
+      streamingDiv = document.createElement("div");
+      streamingDiv.className = "msg bot-msg";
+      chatContainer.appendChild(streamingDiv);
+    }
+    streamingDiv.textContent = text;
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  // Textarea otomatik yükseklik
+  input.addEventListener("input", () => {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 120) + "px";
+  });
+
+  async function sendMessage() {
+    const text = input.value.trim();
+    if (!text || !loggedUser) return;
+
+    sendBtn.disabled = true;
+
+    // Kullanıcı mesajını ekle
+    addMessage(text, "user");
+    input.value = "";
+    input.style.height = "36px";
+
+    // Düşünüyor animasyonunu aç
+    thinking.style.display = "inline-flex";
+    streamingDiv = null; // yeni cevap için reset
+
+    let response;
+    try {
+      response = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          user: loggedUser,
+          mode: "normal",
+        }),
+      });
+    } catch (err) {
+      addMessage("Sunucuya erişilemedi. Lütfen tekrar deneyin.", "bot");
+      thinking.style.display = "none";
+      sendBtn.disabled = false;
       return;
     }
 
-    try {
-      const res = await fetch("/purchase", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: currentUserEmail, packageType }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        addMessageBubble(
-          "assistant",
-          "Paket alınamadı: " + (data.message || "Bilinmeyen hata.")
-        );
-      } else {
-        addMessageBubble("assistant", data.message || "Paket eklendi.");
-        updateRemaining(data.remaining);
-      }
-    } catch (err) {
-      console.error(err);
-      addMessageBubble("assistant", "Sunucuya ulaşılamadı.");
+    if (!response.ok) {
+      let errorText = "Sunucu hatası oluştu.";
+      try {
+        const data = await response.json();
+        if (data && data.error) errorText = data.error;
+      } catch (_) {}
+      addMessage(errorText, "bot");
+      thinking.style.display = "none";
+      sendBtn.disabled = false;
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let botText = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      botText += chunk;
+      updateStreamingMessage(botText);
+    }
+
+    // İşlem bitti
+    thinking.style.display = "none";
+    sendBtn.disabled = false;
+
+    // Kullanıcı limit güncelle
+    const remaining = response.headers.get("X-Remaining");
+    if (remaining !== null) {
+      loggedUser.used += 1;
+      loggedUser.remaining = Number(remaining);
+      localStorage.setItem("sulamaUser", JSON.stringify(loggedUser));
+      userInfo.textContent =
+        loggedUser.email + " • Kalan soru: " + loggedUser.remaining;
     }
   }
 
-  // ---- Chat / mesaj gönderme ----
-
-  // HTML buton sendMsg çağırıyor:
-  function sendMsg() {
-    sendMessage();
-  }
-
-  messageInput.addEventListener("keydown", (e) => {
+  input.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
   });
 
-  async function sendMessage() {
-    if (!currentUserEmail) {
-      addMessageBubble(
-        "assistant",
-        "Önce sol taraftan giriş yapman gerekiyor."
-      );
-      return;
-    }
-
-    const message = messageInput.value.trim();
-    if (!message) return;
-
-    addMessageBubble("user", message);
-    messageInput.value = "";
-
-    try {
-      showThinking();
-      sendBtn.disabled = true;
-
-      const res = await fetch("/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: currentUserEmail,
-          message,
-          mode: "normal",
-        }),
-      });
-
-      const data = await res.json();
-      if (data.error) {
-        addMessageBubble("assistant", `Hata: ${data.error}`);
-      } else {
-        addMessageBubble("assistant", data.reply);
-        updateRemaining(data.remaining);
-      }
-    } catch (err) {
-      console.error(err);
-      addMessageBubble(
-        "assistant",
-        "Sunucuya ulaşılamadı, lütfen biraz sonra tekrar dene."
-      );
-    } finally {
-      hideThinking();
-      sendBtn.disabled = false;
-    }
-  }
-
-  // ---- Tasarım modu ----
-
-  designBtn.addEventListener("click", createDesign);
-
-  async function createDesign() {
-    if (!currentUserEmail) {
-      addMessageBubble(
-        "assistant",
-        "Önce sol taraftan giriş yapman gerekiyor."
-      );
-      return;
-    }
-
-    const area = parseFloat(designArea.value) || 0;
-    if (area <= 0) {
-      designInfo.textContent = "Bahçe alanı (m²) zorunlu.";
-      designInfo.style.color = "var(--error)";
-      return;
-    }
-
-    currentMode = "design";
-
-    currentDesignData = {
-      alan_m2: area,
-      sekil: designShape.value,
-      su_kaynagi: designWater.value,
-      sistem_tipi: designSystem.value,
-      otomasyon: designAutomation.value,
-      egim: designSlope.value,
-      lokasyon: designLocation.value.trim(),
-      notlar: designNotes.value.trim(),
-    };
-
-    // Kullanıcı tasarım isteği balonu
-    const summary =
-      "- Alan: " +
-      currentDesignData.alan_m2 +
-      " m²\n" +
-      "- Şekil: " +
-      currentDesignData.sekil.toLowerCase() +
-      "\n" +
-      "- Su kaynağı: " +
-      currentDesignData.su_kaynagi.toLowerCase() +
-      "\n" +
-      "- Sistem tipi: " +
-      currentDesignData.sistem_tipi.toLowerCase() +
-      "\n" +
-      "- Otomasyon: " +
-      currentDesignData.otomasyon.toLowerCase();
-
-    addMessageBubble(
-      "user",
-      "Özel tasarım isteği:\n" + summary,
-      { header: "Özel tasarım isteği" }
-    );
-
-    designInfo.textContent = "Tasarıma göre proje hazırlanıyor...";
-    designInfo.style.color = "var(--text-soft)";
-
-    try {
-      showThinking();
-      sendBtn.disabled = true;
-      designBtn.disabled = true;
-
-      const res = await fetch("/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: currentUserEmail,
-          message: "",
-          mode: "design",
-          designData: currentDesignData,
-        }),
-      });
-
-      const data = await res.json();
-      if (data.error) {
-        addMessageBubble("assistant", `Hata: ${data.error}`);
-        designInfo.textContent = data.error;
-        designInfo.style.color = "var(--error)";
-      } else {
-        addMessageBubble("assistant", data.reply);
-        designInfo.textContent = "Tasarım oluşturuldu. Projelerim paneline kaydedildi.";
-        designInfo.style.color = "var(--accent-text)";
-        updateRemaining(data.remaining);
-        loadProjects();
-      }
-    } catch (err) {
-      console.error(err);
-      addMessageBubble(
-        "assistant",
-        "Sunucuya ulaşılamadı, lütfen biraz sonra tekrar dene."
-      );
-      designInfo.textContent = "Sunucuya ulaşılamadı.";
-      designInfo.style.color = "var(--error)";
-    } finally {
-      hideThinking();
-      sendBtn.disabled = false;
-      designBtn.disabled = false;
-      currentMode = "normal";
-    }
-  }
-
-  // ---- Projeler ----
-
-  refreshProjectsBtn.addEventListener("click", loadProjects);
-
-  async function loadProjects() {
-    if (!currentUserEmail) {
-      projectsEmpty.textContent = "Giriş yapmadan proje görüntüleyemezsin.";
-      projectsEmpty.style.display = "block";
-      projectsList.innerHTML = "";
-      return;
-    }
-
-    try {
-      const res = await fetch(
-        "/projects?email=" + encodeURIComponent(currentUserEmail)
-      );
-      const data = await res.json();
-      projectsList.innerHTML = "";
-
-      if (!data.projects || data.projects.length === 0) {
-        projectsEmpty.textContent = "Henüz kayıtlı projen yok.";
-        projectsEmpty.style.display = "block";
-        return;
-      }
-
-      projectsEmpty.style.display = "none";
-
-      data.projects.forEach((p) => {
-        const item = document.createElement("div");
-        item.className = "project-item";
-
-        const title = document.createElement("div");
-        title.className = "project-item-title";
-        title.textContent = p.title;
-
-        const metaRow = document.createElement("div");
-        metaRow.className = "project-item-meta";
-
-        const left = document.createElement("div");
-        left.textContent = new Date(p.createdAt).toLocaleString("tr-TR");
-
-        const right = document.createElement("div");
-        const openBtn = document.createElement("button");
-        openBtn.className = "btn btn-sm btn-outline";
-        openBtn.textContent = "Aç";
-        openBtn.addEventListener("click", () => openProject(p.id));
-
-        right.appendChild(openBtn);
-        metaRow.appendChild(left);
-        metaRow.appendChild(right);
-
-        item.appendChild(title);
-        item.appendChild(metaRow);
-
-        projectsList.appendChild(item);
-      });
-    } catch (err) {
-      console.error(err);
-      projectsEmpty.textContent = "Projeler alınırken hata oluştu.";
-      projectsEmpty.style.display = "block";
-    }
-  }
-
-  async function openProject(id) {
-    if (!currentUserEmail) return;
-
-    try {
-      const res = await fetch(
-        "/project?email=" +
-          encodeURIComponent(currentUserEmail) +
-          "&id=" +
-          encodeURIComponent(id)
-      );
-      const data = await res.json();
-      if (!data.project) {
-        addMessageBubble("assistant", "Proje bulunamadı.");
-        return;
-      }
-
-      const header = "Kayıtlı proje: " + data.project.title;
-      addMessageBubble("assistant", data.project.content, { header });
-
-      // PDF indir butonu için küçük bilgi
-      addMessageBubble(
-        "assistant",
-        "Bu projeyi PDF olarak indirmek istersen aşağıdaki butona tıklayabilirsin.",
-        { header: "PDF" }
-      );
-      downloadPdf(data.project.title, data.project.content);
-    } catch (err) {
-      console.error(err);
-      addMessageBubble("assistant", "Proje açılırken hata oluştu.");
-    }
-  }
-
-  async function downloadPdf(title, content) {
-    if (!currentUserEmail) return;
-
-    try {
-      const res = await fetch("/export-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: currentUserEmail,
-          title,
-          content,
-        }),
-      });
-
-      if (!res.ok) {
-        addMessageBubble("assistant", "PDF oluşturulamadı.");
-        return;
-      }
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = (title || "sulama-tasarim") + ".pdf";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error(err);
-      addMessageBubble("assistant", "PDF oluşturulurken hata oluştu.");
-    }
-  }
-
-  // İlk UI durumu
-  updateAuthUI();
+  sendBtn.addEventListener("click", sendMessage);
 </script>
+
 </body>
 </html>

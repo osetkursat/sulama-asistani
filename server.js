@@ -1,102 +1,103 @@
-require("dotenv").config(); // .env dosyasını oku
+// server.js
+// Sulama Asistanı backend
+
+require("dotenv").config();
 
 const express = require("express");
-const bodyParser = require("body-parser");
-const cors = require("cors");
-const OpenAI = require("openai");
-const fs = require("fs");
 const path = require("path");
+const fs = require("fs");
+const OpenAI = require("openai");
 const PDFDocument = require("pdfkit");
 
 const app = express();
-app.use(cors());
-app.use(bodyParser.json());
+
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const USERS_FILE = path.join(__dirname, "users.json");
+const ADMIN_KEY = process.env.ADMIN_KEY || "";
+
+// -------------------------------------------------------------------
+// Middleware
+// -------------------------------------------------------------------
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Statik dosyalar (public klasörü)
 app.use(express.static(path.join(__dirname, "public")));
 
+// -------------------------------------------------------------------
+// Yardımcı fonksiyonlar
+// -------------------------------------------------------------------
 
-const client = new OpenAI(); // apiKey .env'den
-
-// Kullanıcıları sakladığımız dosya
-const USERS_FILE = path.join(__dirname, "users.json");
-
-// Kullanıcıları dosyadan yükle
 function loadUsers() {
-  try {
-    const data = fs.readFileSync(USERS_FILE, "utf8");
-    const parsed = JSON.parse(data);
+  if (!fs.existsSync(USERS_FILE)) {
+    const defaultUser = {
+      email: "deneme@deneme.com",
+      password: "1234",
+      limit: 50,
+      used: 0,
+      memory: [],
+      projects: [],
+    };
+    fs.writeFileSync(
+      USERS_FILE,
+      JSON.stringify([defaultUser], null, 2),
+      "utf-8"
+    );
+    return [defaultUser];
+  }
 
-    // Eski kayıtlarda memory / projects yoksa ekle
-    return parsed.map((u) => ({
-      ...u,
-      memory: Array.isArray(u.memory) ? u.memory : [],
-      projects: Array.isArray(u.projects) ? u.projects : [],
-    }));
-  } catch (e) {
-    console.log("users.json bulunamadı, boş liste ile başlıyoruz.");
+  const raw = fs.readFileSync(USERS_FILE, "utf-8");
+  if (!raw.trim()) return [];
+
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error("users.json parse hatası:", err);
     return [];
   }
 }
 
-// Kullanıcıları dosyaya kaydet
 function saveUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf-8");
 }
 
-let users = loadUsers();
-
-// Eğer hiç kullanıcı yoksa, varsayılan bir tane oluştur
-if (users.length === 0) {
-  users.push({
-    email: "deneme@deneme.com",
-    password: "1234",
-    limit: 50, // toplam soru limiti
-    used: 0,   // kullanılan soru
-    memory: [], // konuşma geçmişi
-    projects: [], // kayıtlı projeler
-  });
-  saveUsers(users);
-}
-
-// Basit admin auth middleware'i
-function isAdmin(req, res, next) {
-  const headerKey = req.headers["x-admin-key"];
-  const adminKey = process.env.ADMIN_KEY;
-
-  if (!adminKey) {
-    console.warn("UYARI: ADMIN_KEY .env içinde tanımlı değil!");
-    return res.status(500).json({ error: "Admin yapılandırması eksik." });
+// Admin kontrol middleware
+function requireAdmin(req, res, next) {
+  const key = req.headers["x-admin-key"];
+  if (!key || key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "Geçersiz admin anahtarı." });
   }
-
-  if (!headerKey || headerKey !== adminKey) {
-    return res.status(401).json({ error: "Yetkisiz. Admin anahtarı hatalı." });
-  }
-
   next();
 }
 
-// Kayıt endpoint'i
+// -------------------------------------------------------------------
+// Auth / Kullanıcı Endpoint'leri
+// -------------------------------------------------------------------
+
+// POST /register
 app.post("/register", (req, res) => {
   const { email, password } = req.body || {};
 
   if (!email || !password) {
-    return res.json({
-      success: false,
-      message: "E-posta ve şifre zorunludur.",
-    });
+    return res.status(400).json({ error: "email ve password zorunlu." });
   }
 
-  const exists = users.find((u) => u.email === email);
-  if (exists) {
-    return res.json({
-      success: false,
-      message: "Bu e-posta ile zaten bir hesap var.",
-    });
+  let users = loadUsers();
+  const existing = users.find((u) => u.email === email);
+  if (existing) {
+    return res
+      .status(400)
+      .json({ error: "Bu e-posta ile zaten kayıtlı bir kullanıcı var." });
   }
 
   const newUser = {
     email,
-    password,
-    limit: 50, // yeni kullanıcıya başlangıç 50 soru
+    password, // TODO: ileride hash
+    limit: 50,
     used: 0,
     memory: [],
     projects: [],
@@ -105,276 +106,370 @@ app.post("/register", (req, res) => {
   users.push(newUser);
   saveUsers(users);
 
-  return res.json({ success: true, message: "Kayıt başarılı." });
+  return res.json({
+    success: true,
+    email: newUser.email,
+    limit: newUser.limit,
+    used: newUser.used,
+    remaining: newUser.limit - newUser.used,
+  });
 });
 
-// Giriş endpoint'i
+// POST /login
 app.post("/login", (req, res) => {
   const { email, password } = req.body || {};
 
-  const user = users.find(
-    (u) => u.email === email && u.password === password
-  );
-
-  if (!user) {
-    return res.json({
-      success: false,
-      message: "E-posta veya şifre hatalı.",
-    });
+  if (!email || !password) {
+    return res.status(400).json({ error: "email ve password zorunlu." });
   }
 
-  if (!Array.isArray(user.memory)) user.memory = [];
-  if (!Array.isArray(user.projects)) user.projects = [];
+  const users = loadUsers();
+  const user = users.find((u) => u.email === email);
+
+  if (!user || user.password !== password) {
+    return res.status(401).json({ error: "E-posta veya şifre hatalı." });
+  }
+
+  const remaining = user.limit - user.used;
+
+  return res.json({
+    success: true,
+    email: user.email,
+    limit: user.limit,
+    used: user.used,
+    remaining,
+  });
+});
+
+// POST /purchase
+app.post("/purchase", (req, res) => {
+  const { email, packageType } = req.body || {};
+  if (!email || !packageType) {
+    return res.status(400).json({ error: "email ve packageType zorunlu." });
+  }
+
+  let users = loadUsers();
+  const user = users.find((u) => u.email === email);
+  if (!user) {
+    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+  }
+
+  let add = 0;
+  if (packageType === "mini") add = 50;
+  else if (packageType === "pro") add = 200;
+  else if (packageType === "bayi") add = 1000;
+  else {
+    return res.status(400).json({ error: "Geçersiz paket tipi." });
+  }
+
+  user.limit += add;
   saveUsers(users);
 
   return res.json({
     success: true,
     email: user.email,
+    limit: user.limit,
+    used: user.used,
     remaining: user.limit - user.used,
   });
 });
 
-// Paket satın alma (demo) endpoint'i
-app.post("/purchase", (req, res) => {
-  const { email, packageType } = req.body || {};
+// -------------------------------------------------------------------
+// STREAMING /chat endpoint'i (düzeltilmiş final sürüm)
+// -------------------------------------------------------------------
 
-  const user = users.find((u) => u.email === email);
-  if (!user) {
-    return res.json({ success: false, message: "Kullanıcı bulunamadı." });
-  }
-
-  let addQuestions = 0;
-  if (packageType === "mini") addQuestions = 50;
-  else if (packageType === "pro") addQuestions = 200;
-  else if (packageType === "bayi") addQuestions = 1000;
-
-  if (addQuestions === 0) {
-    return res.json({ success: false, message: "Geçersiz paket." });
-  }
-
-  user.limit += addQuestions;
-  saveUsers(users);
-
-  return res.json({
-    success: true,
-    message: `Paketten ${addQuestions} soru eklendi.`,
-    remaining: user.limit - user.used,
-  });
-});
-
-// Chat endpoint'i (tasarım modu + hafıza + proje kaydı)
 app.post("/chat", async (req, res) => {
-  const { email, message, mode, designData } = req.body || {};
+  let { message, user, mode, designData } = req.body;
 
-  const user = users.find((u) => u.email === email);
-  if (!user) return res.json({ error: "Kullanıcı bulunamadı." });
-
-  if (user.used >= user.limit) {
-    return res.json({ error: "Soru hakkınız bitti." });
+  // 1) Kullanıcı doğrulama
+  if (!user || !user.email) {
+    return res.status(400).json({ error: "Kullanıcı bilgisi eksik." });
   }
 
-  if (!Array.isArray(user.memory)) user.memory = [];
-  if (!Array.isArray(user.projects)) user.projects = [];
+  // Sistemdeki kullanıcıyı çek
+  let users = loadUsers();
+  let currentUser = users.find((u) => u.email === user.email);
+  if (!currentUser) {
+    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+  }
 
-  const baseSystemPrompt =
-    "Sen Türkiye'de peyzaj sulama sistemlerinde uzman bir sulama danışmanısın. " +
-    "Rain Bird, Hunter, Irritec gibi markalara hakimsin. Kullanıcıya doğru çözümler sun, " +
-    "fiyatlar TL cinsinden olsun, teknik bilgiler net olsun. " +
-    "Kullanıcının önceki konuşmalarını da dikkate alarak tutarlı ve devamlı cevap ver.";
+  // 2) Limit kontrolü
+  if (currentUser.used >= currentUser.limit) {
+    return res
+      .status(403)
+      .json({ error: "Soru hakkınız doldu. Paket satın almanız gerekiyor." });
+  }
 
-  const history = Array.isArray(user.memory)
-    ? user.memory.slice(-20)
+  // 3) Sistem prompt
+  let systemPrompt = `
+Sen "Sulama Asistanı" isimli yapay zekâsın.
+Türkiye şartlarında villa / site / peyzaj bahçeleri için profesyonel bir sulama mühendisi gibi davranacaksın.
+
+Görevin:
+- Kullanıcının verdiği bahçe bilgilerine göre profesyonel sulama hesabı yapmak,
+- Sprink sayısı, zone sayısı, vana sayısı, boru uzunluğu, boru çapı, kablo, filtre, kollektör, fittings ve tüm sarf malzemelerini otomatik olarak hesaplamak,
+- Sonuçta eksiksiz bir malzeme listesi (BOM) çıkarmak.
+
+Kullanıcı hiçbir hesap yapmayacak. Tüm hesapları kendin yapacaksın.
+
+────────────────────────────────────────
+1) Sprink sayısını bahçeye ve modele göre hesapla.
+2) Debi + zone limitine göre solenoid vana sayısını çıkar.
+3) Ana hat boru uzunluğunu kaynak → kolektör + kolektör → son sprink şeklinde hesapla.
+4) Lateral boru uzunluğu = sprink sayısı × 2 m.
+5) Kontrol ünitesi istasyon sayısını vana sayısına göre (4/6/8/12) seç.
+6) Sinyal kablosu: damar = vana sayısı + 1. Kablo: 3/5/7/9/13 damar’dan uygun olanı seç.
+7) Vana kutusu: 1→6", 2→10", 3→12", 4→14", 4+ için mantıklı dağıtım yap.
+8) Priz kolye: Sprey & 3504 = 1/2", 5004 = 3/4". Adet = sprink sayısı.
+9) Filtre sistemi: Boru çapına göre filtre + küresel vana + adaptör kombinasyonu seç.
+10) 20 mm erkek dirsek: priz kolye adedi × 2 (1/2" veya 3/4").
+11) Kontrol panosu: istasyon sayısına göre uygun pano seç.
+12) Kolektör: 1" solenoid vana varsa, vana sayısı kadar MTT-100 + 1 adet 1" dişi tapa + giriş adaptörü ekle.
+13) Vana adaptörleri: vana sayısı kadar erkek adaptör + vana sayısı kadar kaplin tapa.
+14) Yedek fittings: boru çapına göre 2 te + 2 dirsek + 2 manşon ekle.
+15) Teflon bant: minimum 1, gerekirse 2 adet.
+16) Elektrik bandı: 1 adet.
+17) Montaj eldiveni: 1 adet.
+
+GENEL KURALLAR:
+- Tüm hesaplamaları kendin yap, kullanıcıya “sen hesapla” deme.
+- Listeyi gruplandır (Sprinkler, Vanalar, Borular, Elektrik, Fittings, Sarf).
+- Her üründe: ürün adı, adet/metre ve kısa açıklama ver.
+- Teknik ol ama sade ve anlaşılır Türkçe yaz.
+────────────────────────────────────────
+`;
+
+  // 4) Özel tasarım modu ise prompt'u genişlet
+  if (mode === "design") {
+    systemPrompt += `
+KULLANICI ÖZEL TASARIM MODUNU AÇTI.
+Cevabını şu başlıklarla ver:
+
+1) Proje özeti
+2) Zone planı (alan, debi, tip)
+3) Malzeme listesi (adet + açıklama + yaklaşık fiyat aralığı, TL)
+4) Toplam maliyet aralığı (minimum - maksimum, TL)
+5) Montaj notları (pratik öneriler)
+
+Türkiye koşullarına göre dengeli ve gerçekçi öneri yap.
+`;
+
+    message =
+      `ÖZEL TASARIM TALEBİ:\n` +
+      JSON.stringify(designData || {}, null, 2) +
+      `\n\nLütfen yukarıdaki başlıklara göre detaylı cevapla.`;
+  }
+
+  // 5) Hafıza (son 20 mesaj)
+  const history = Array.isArray(currentUser.memory)
+    ? currentUser.memory.slice(-20)
     : [];
 
   const messages = [
-    {
-      role: "system",
-      content: baseSystemPrompt,
-    },
-    ...history,
+    { role: "system", content: systemPrompt },
+    ...history.map((m) => ({ role: m.role, content: m.content })),
+    { role: "user", content: message },
   ];
 
-  if (mode === "design" && designData) {
-    messages.push({
-      role: "system",
-      content:
-        "ÖZEL TASARIM MODU: Kullanıcı aşağıdaki proje girdilerini vermiştir. " +
-        "Bu bahçe için Türkiye'deki villa/peyzaj uygulamalarına uygun DETAYLI bir sulama tasarımı yap. " +
-        "Çıktıyı şu başlıklarla ver:\n" +
-        "1) Proje özeti (kısa)\n" +
-        "2) Zone / hat planı (kaç zone, hangi alanlar, tahmini debiler)\n" +
-        "3) Malzeme listesi (adetli, örn: 12 adet Rain Bird 5004, 120 m 32 mm PE boru, 1 adet 1\" solenoid vana vb.)\n" +
-        "4) Tahmini malzeme maliyet aralığı (TL olarak, minimum-maksimum)\n" +
-        "5) Montaj notları ve dikkat edilmesi gerekenler.\n\n" +
-        "Kullanıcının verdiği girdiler (JSON formatında):\n" +
-        JSON.stringify(designData, null, 2),
-    });
-  }
+  // 6) Kullanım hakkını düş
+  currentUser.used += 1;
+  saveUsers(users);
 
-  const userMessageContent =
-    message && message.trim().length > 0
-      ? message
-      : mode === "design"
-      ? "Yukarıdaki kriterlere göre bahçem için sulama projesi tasarla."
-      : "Sulama ile ilgili danışmanlık istiyorum.";
+  // 7) Streaming yanıt başlat
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Transfer-Encoding", "chunked");
+  res.setHeader(
+    "X-Remaining",
+    String(currentUser.limit - currentUser.used)
+  );
 
-  messages.push({
-    role: "user",
-    content: userMessageContent,
-  });
+  let fullReply = "";
 
   try {
-    const completion = await client.chat.completions.create({
+    const stream = await client.chat.completions.create({
       model: "gpt-5.1",
       messages,
+      stream: true,
     });
 
-    const replyText = completion.choices[0].message.content;
-
-    // Kullanım sayacı
-    user.used++;
-
-    // Hafızaya ekle
-    user.memory.push(
-      { role: "user", content: userMessageContent },
-      { role: "assistant", content: replyText }
-    );
-    if (user.memory.length > 40) {
-      user.memory = user.memory.slice(-40);
-    }
-
-    // Tasarım modunda ise proje olarak kaydet
-    if (mode === "design" && designData) {
-      const now = new Date();
-      const id = now.getTime().toString();
-      const titleParts = [];
-      if (designData.alan_m2) titleParts.push(`${designData.alan_m2} m²`);
-      if (designData.lokasyon) titleParts.push(designData.lokasyon);
-      const titleBase = titleParts.join(" - ") || "Sulama Tasarımı";
-
-      const project = {
-        id,
-        type: "design",
-        title: `Sulama Tasarımı - ${titleBase}`,
-        createdAt: now.toISOString(),
-        summary: replyText.slice(0, 200),
-        content: replyText,
-        rawInput: designData,
-      };
-
-      user.projects.push(project);
-      // Son 50 projeyi tut
-      if (user.projects.length > 50) {
-        user.projects = user.projects.slice(-50);
+    for await (const part of stream) {
+      const delta = part.choices?.[0]?.delta?.content || "";
+      if (delta) {
+        fullReply += delta;
+        res.write(delta);
       }
     }
 
-    saveUsers(users);
-
-    res.json({
-      reply: replyText,
-      remaining: user.limit - user.used,
-    });
+    res.end();
   } catch (err) {
-    console.error("OpenAI hatası:", err);
-    res.json({ error: "API hatası" });
+    console.error("OpenAI streaming hata:", err);
+    if (!fullReply) {
+      return res
+        .status(500)
+        .end("Sunucu hatası: Asistan şu anda yanıt veremiyor.");
+    } else {
+      res.write(
+        "\n\n[Uyarı] Cevap tam olarak tamamlanamadı, lütfen tekrar deneyin."
+      );
+      return res.end();
+    }
+  }
+
+  // 8) Streaming bittikten sonra hafıza + proje kaydı
+  try {
+    users = loadUsers();
+    currentUser = users.find((u) => u.email === user.email);
+    if (!currentUser) return;
+
+    if (!Array.isArray(currentUser.memory)) currentUser.memory = [];
+    currentUser.memory.push({ role: "user", content: message });
+    currentUser.memory.push({ role: "assistant", content: fullReply });
+
+    if (currentUser.memory.length > 40) {
+      currentUser.memory = currentUser.memory.slice(-40);
+    }
+
+    if (mode === "design") {
+      if (!Array.isArray(currentUser.projects)) currentUser.projects = [];
+      const now = new Date();
+      const id = String(now.getTime());
+      const title =
+        (designData && designData.title) ||
+        `Özel Tasarım - ${now.toLocaleString("tr-TR")}`;
+
+      currentUser.projects.push({
+        id,
+        title,
+        type: "design",
+        createdAt: now.toISOString(),
+        summary: fullReply.slice(0, 400),
+        content: fullReply,
+        rawDesignData: designData || {},
+      });
+    }
+
+    saveUsers(users);
+  } catch (err) {
+    console.error("Streaming sonrası kullanıcı kaydetme hatası:", err);
   }
 });
 
-// PDF export endpoint'i
+// -------------------------------------------------------------------
+// Proje endpoint'leri
+// -------------------------------------------------------------------
+
+// GET /projects?email=...
+app.get("/projects", (req, res) => {
+  const email = req.query.email;
+  if (!email) {
+    return res.status(400).json({ error: "email parametresi zorunlu." });
+  }
+
+  const users = loadUsers();
+  const user = users.find((u) => u.email === email);
+  if (!user) {
+    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+  }
+
+  const projects = Array.isArray(user.projects) ? user.projects : [];
+
+  const list = projects.map((p) => ({
+    id: p.id,
+    title: p.title,
+    type: p.type,
+    createdAt: p.createdAt,
+    summary: p.summary,
+  }));
+
+  return res.json({ success: true, projects: list });
+});
+
+// GET /project?email=...&id=...
+app.get("/project", (req, res) => {
+  const email = req.query.email;
+  const id = req.query.id;
+
+  if (!email || !id) {
+    return res.status(400).json({ error: "email ve id zorunlu." });
+  }
+
+  const users = loadUsers();
+  const user = users.find((u) => u.email === email);
+  if (!user) {
+    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+  }
+
+  const projects = Array.isArray(user.projects) ? user.projects : [];
+  const project = projects.find((p) => p.id === id);
+  if (!project) {
+    return res.status(404).json({ error: "Proje bulunamadı." });
+  }
+
+  return res.json({
+    success: true,
+    project: {
+      id: project.id,
+      title: project.title,
+      type: project.type,
+      createdAt: project.createdAt,
+      summary: project.summary,
+      content: project.content,
+    },
+  });
+});
+
+// -------------------------------------------------------------------
+// PDF export
+// -------------------------------------------------------------------
+
+// POST /export-pdf { email, title, content }
 app.post("/export-pdf", (req, res) => {
   const { email, title, content } = req.body || {};
 
-  if (!email || !content) {
-    return res.status(400).json({ error: "Eksik veri." });
+  if (!email || !title || !content) {
+    return res
+      .status(400)
+      .json({ error: "email, title ve content zorunlu." });
   }
 
-  const safeTitle = (title || "sulama-tasarim").replace(/[^a-z0-9-_]/gi, "_");
+  const users = loadUsers();
+  const user = users.find((u) => u.email === email);
+  if (!user) {
+    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+  }
 
-  const doc = new PDFDocument({ margin: 50 });
+  const safeTitle =
+    title.replace(/[^\wığüşöçİĞÜŞÖÇ\- ]+/g, "_").slice(0, 80) || "proje";
+  const fileName = `${safeTitle}.pdf`;
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename="${safeTitle}.pdf"`
+    `attachment; filename="${fileName}"`
   );
+
+  const doc = new PDFDocument({ margin: 50 });
 
   doc.pipe(res);
 
-  doc.fontSize(18).text(title || "Sulama Proje Raporu", {
-    align: "left",
-  });
+  doc.fontSize(18).text(title, { underline: true });
   doc.moveDown();
-
-  doc
-    .fontSize(10)
-    .fillColor("#444444")
-    .text(`Kullanıcı: ${email}`, { align: "left" });
-  doc.moveDown();
-
-  doc.moveTo(50, doc.y).lineTo(550, doc.y).strokeColor("#cccccc").stroke();
-  doc.moveDown();
-
-  doc.fontSize(12).fillColor("#000000");
-  doc.text(content, {
+  doc.fontSize(11).text(content, {
     align: "left",
   });
 
   doc.end();
 });
 
-/* --------- PROJE API'LERİ (KULLANICI PANELİ) ----------- */
+// -------------------------------------------------------------------
+// Admin endpoint'leri
+// -------------------------------------------------------------------
 
-// Kullanıcının proje listesini getir (sadece özet)
-app.get("/projects", (req, res) => {
-  const email = req.query.email;
-  if (!email) {
-    return res.status(400).json({ error: "Email gerekli." });
-  }
+// GET /admin/users
+app.get("/admin/users", requireAdmin, (req, res) => {
+  const users = loadUsers();
 
-  const user = users.find((u) => u.email === email);
-  if (!user) {
-    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
-  }
-
-  const projects = (user.projects || []).map((p) => ({
-    id: p.id,
-    title: p.title,
-    createdAt: p.createdAt,
-    type: p.type,
-    summary: p.summary,
-  }));
-
-  res.json({ projects });
-});
-
-// Tek proje detayı getir
-app.get("/project", (req, res) => {
-  const email = req.query.email;
-  const id = req.query.id;
-
-  if (!email || !id) {
-    return res.status(400).json({ error: "Email ve id gerekli." });
-  }
-
-  const user = users.find((u) => u.email === email);
-  if (!user) {
-    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
-  }
-
-  const project = (user.projects || []).find((p) => p.id === id);
-  if (!project) {
-    return res.status(404).json({ error: "Proje bulunamadı." });
-  }
-
-  res.json({ project });
-});
-
-/* ----------------- ADMIN API ------------------ */
-
-// Tüm kullanıcıları listele (şifreleri gönderme!)
-app.get("/admin/users", isAdmin, (req, res) => {
-  const result = users.map((u) => ({
+  const list = users.map((u) => ({
     email: u.email,
     limit: u.limit,
     used: u.used,
@@ -383,48 +478,51 @@ app.get("/admin/users", isAdmin, (req, res) => {
     projectCount: Array.isArray(u.projects) ? u.projects.length : 0,
   }));
 
-  res.json({ users: result });
+  return res.json({ success: true, users: list });
 });
 
-// Tek bir kullanıcıyı güncelle (limit, used reset, memory reset)
-app.post("/admin/update-user", isAdmin, (req, res) => {
+// POST /admin/update-user
+app.post("/admin/update-user", requireAdmin, (req, res) => {
   const { email, limit, resetUsed, resetMemory } = req.body || {};
 
+  if (!email) {
+    return res.status(400).json({ error: "email zorunlu." });
+  }
+
+  let users = loadUsers();
   const user = users.find((u) => u.email === email);
   if (!user) {
     return res.status(404).json({ error: "Kullanıcı bulunamadı." });
   }
 
-  if (typeof limit === "number" && !Number.isNaN(limit)) {
+  if (typeof limit === "number") {
     user.limit = limit;
   }
 
-  if (resetUsed === true) {
+  if (resetUsed) {
     user.used = 0;
   }
 
-  if (resetMemory === true) {
+  if (resetMemory) {
     user.memory = [];
   }
 
   saveUsers(users);
 
-  res.json({
+  return res.json({
     success: true,
-    user: {
-      email: user.email,
-      limit: user.limit,
-      used: user.used,
-      remaining: user.limit - user.used,
-      memoryCount: Array.isArray(user.memory) ? user.memory.length : 0,
-      projectCount: Array.isArray(user.projects) ? user.projects.length : 0,
-    },
+    email: user.email,
+    limit: user.limit,
+    used: user.used,
+    remaining: user.limit - user.used,
   });
 });
 
+// -------------------------------------------------------------------
+// Sunucu başlat
+// -------------------------------------------------------------------
+
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
-  console.log(`Sulama Asistanı Çalışıyor → http://localhost:${PORT}`);
+  console.log(`Sulama Asistanı server ${PORT} portunda çalışıyor.`);
 });
-

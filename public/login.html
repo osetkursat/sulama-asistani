@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sulama Asistanı • Giriş</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .card {
+      background: #ffffff;
+      padding: 24px 26px;
+      border-radius: 10px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 360px;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 20px;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #555;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+      margin-top: 10px;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px 9px;
+      border-radius: 6px;
+      border: 1px solid #bbb;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 16px;
+      padding: 9px;
+      border-radius: 6px;
+      border: none;
+      background: #1b5e20;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .alt {
+      margin-top: 10px;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .alt a {
+      color: #1b5e20;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .error {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #c62828;
+      text-align: center;
+      min-height: 16px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h1>💧 Sulama Asistanı</h1>
+  <div class="subtitle">Hesabınla giriş yap ve proje hesaplamaya başla.</div>
+
+  <label for="email">E-posta</label>
+  <input type="email" id="email" placeholder="ornek@mail.com" />
+
+  <label for="password">Şifre</label>
+  <input type="password" id="password" placeholder="Şifreniz" />
+
+  <button id="loginBtn">Giriş Yap</button>
+
+  <div class="error" id="error"></div>
+
+  <div class="alt">
+    Hesabın yok mu? <a href="/register.html">Kayıt ol</a>
+  </div>
+</div>
+
+<script>
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+  const loginBtn = document.getElementById("loginBtn");
+  const errorDiv = document.getElementById("error");
+
+  loginBtn.addEventListener("click", login);
+  passwordInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") login();
+  });
+
+  async function login() {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+    if (!email || !password) {
+      errorDiv.textContent = "E-posta ve şifre zorunlu.";
+      return;
+    }
+
+    loginBtn.disabled = true;
+    errorDiv.textContent = "";
+
+    try {
+      const res = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (e) {
+        // Sunucu HTML veya boş dönmüşse buraya düşer
+        console.error("JSON parse hatası:", e);
+      }
+
+      if (!res.ok || !data || !data.success) {
+        // Sunucu JSON döndürdüyse oradaki hata, yoksa HTTP kodu
+        if (data && data.error) {
+          errorDiv.textContent = data.error;
+        } else {
+          errorDiv.textContent =
+            "Sunucu hata kodu: " + res.status + " – Lütfen daha sonra tekrar deneyin.";
+        }
+        loginBtn.disabled = false;
+        return;
+      }
+
+      const user = {
+        email: data.email,
+        limit: data.limit,
+        used: data.used,
+        remaining: data.remaining,
+      };
+
+      localStorage.setItem("sulamaUser", JSON.stringify(user));
+      window.location.href = "/index.html";
+    } catch (err) {
+      console.error("Fetch hatası:", err);
+      errorDiv.textContent = "Sunucuya ulaşılamadı (ağ hatası).";
+      loginBtn.disabled = false;
+    }
+  }
+</script>
+
+</body>
+</html>
