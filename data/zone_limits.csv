@@ -1,0 +1,9 @@
+﻿Su Kaynağı;                Maks. Debi (L/dk);Önerilen Maks Zone Debisi (L/dk);Basınç (bar)
+Şebeke (çok düşük);15;10;2
+Şebeke (düşük);20;14;2,5
+Şebeke (orta);30;21;3
+Şebeke (iyi);40;28;3
+Kuyu + hidrofor (orta);40;30;3,5
+Kuyu + hidrofor (güçlü);60;42;4
+Depo + hidrofor (standart);60;45;3,5
+Depo + hidrofor (güçlü);80;56;4

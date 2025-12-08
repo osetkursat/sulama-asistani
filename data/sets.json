@@ -1,0 +1,50 @@
+[
+  {
+    "id": "set_ekonomik_150",
+    "name": "Ekonomik Bahçe Seti - 0-150 m²",
+    "min_area_m2": 0,
+    "max_area_m2": 150,
+    "type": "mixed",
+    "target_user": "villa",
+    "items": [
+      { "sku": "RB5004", "name": "Rain Bird 5004 Pop-up Sprink", "qty": 4, "unit_price": 550 },
+      { "sku": "PE32", "name": "PE100 Boru 32mm", "qty": 40, "unit_price": 25 },
+      { "sku": "VANA1", "name": "1\" Selenoid Vana", "qty": 1, "unit_price": 850 },
+      { "sku": "FILT1", "name": "3/4\" Filtre", "qty": 1, "unit_price": 300 }
+    ],
+    "notes": "Küçük villa bahçeleri için tek zon, temel otomatik sistem."
+  },
+  {
+    "id": "set_standart_300",
+    "name": "Standart Bahçe Seti - 150-300 m²",
+    "min_area_m2": 150,
+    "max_area_m2": 300,
+    "type": "mixed",
+    "target_user": "villa",
+    "items": [
+      { "sku": "RB5004", "name": "Rain Bird 5004 Pop-up Sprink", "qty": 6, "unit_price": 100 },
+      { "sku": "PE32", "name": "PE100 Boru 32mm", "qty": 60, "unit_price": 25 },
+      { "sku": "PE25", "name": "PE100 Boru 20mm", "qty": 50, "unit_price": 18 },
+      { "sku": "VANA1", "name": "1\" Selenoid Vana", "qty": 2, "unit_price": 850 },
+      { "sku": "FILT1", "name": "1\" Filtre", "qty": 1, "unit_price": 300 }
+    ],
+    "notes": "2 zonlu, depo + hidrofor veya güçlü şebeke için uygun sistem."
+  },
+  {
+    "id": "set_premium_500",
+    "name": "Premium Bahçe Seti - 300-500 m²",
+    "min_area_m2": 300,
+    "max_area_m2": 500,
+    "type": "mixed",
+    "target_user": "villa",
+    "items": [
+      { "sku": "RB5004", "name": "Rain Bird 5004 Pop-up Sprink", "qty": 10, "unit_price": 550 },
+      { "sku": "PE40", "name": "PE100 Boru 40mm", "qty": 70, "unit_price": 40 },
+      { "sku": "PE32", "name": "PE100 Boru 32mm", "qty": 80, "unit_price": 25 },
+      { "sku": "PE25", "name": "PE100 Boru 25mm", "qty": 60, "unit_price": 18 },
+      { "sku": "VANA1", "name": "1\" Selenoid Vana", "qty": 3, "unit_price": 850 },
+      { "sku": "FILT2", "name": "1 1/2\" Filtre", "qty": 1, "unit_price": 400 }
+    ],
+    "notes": "Daha büyük ve bölünmüş alanlara sahip bahçeler için çok zonlu çözüm."
+  }
+]

@@ -1,0 +1,92 @@
+[
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "20;10;0",
+    "field2": "53;0",
+    "field3": "28"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "20;20;1",
+    "field2": "06;0",
+    "field3": "92"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "25;20;0",
+    "field2": "68;0",
+    "field3": "3"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "25;30;1",
+    "field2": "02;0",
+    "field3": "48"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "32;30;0",
+    "field2": "63;0",
+    "field3": "17"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "32;50;1",
+    "field2": "05;0",
+    "field3": "39"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "40;40;0",
+    "field2": "54;0",
+    "field3": "1"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "40;60;0",
+    "field2": "8;0",
+    "field3": "22"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "50;60;0",
+    "field2": "51;0",
+    "field3": "07"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "50;100;0",
+    "field2": "85;0",
+    "field3": "16"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "63;80;0",
+    "field2": "43;0",
+    "field3": "05"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "63;150;0",
+    "field2": "81;0",
+    "field3": "15"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "75;100;0",
+    "field2": "38;0",
+    "field3": "03"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "75;200;0",
+    "field2": "76;0",
+    "field3": "11"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "90;150;0",
+    "field2": "39;0",
+    "field3": "03"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "90;250;0",
+    "field2": "66;0",
+    "field3": "07"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "110;200;0",
+    "field2": "35;0",
+    "field3": "02"
+  },
+  {
+    "Boru Çapı (mm);Debi (L/dk);Hız (m/sn);Kayıp (bar / 100 m)": "110;350;0",
+    "field2": "61;0",
+    "field3": "05"
+  }
+]

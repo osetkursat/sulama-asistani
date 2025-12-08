@@ -1,0 +1,21 @@
+﻿Damlatici Tipi;Debi (L/saat);Hat Mesafesi (m);Bitki Araligi (cm);Hattin Maks. Uzunlugu (m);Onerilen Basinc (bar)
+Inline;2;0,2;20;110;1
+Inline;2;0,25;25;100;1
+Inline;2;0,33;33;80;1
+Inline;2;0,4;40;70;1
+Inline;2;0,5;50;60;1
+Inline;2;1;100;45;1
+;;;;;
+Inline;4;0,2;20;90;1
+Inline;4;0,25;25;80;1
+Inline;4;0,33;33;70;1
+Inline;4;0,4;40;60;1
+Inline;4;0,5;50;50;1
+Inline;4;1;100;35;1
+;;;;;
+Inline;8;0,2;20;70;1,2
+Inline;8;0,25;25;60;1,2
+Inline;8;0,33;33;55;1,2
+Inline;8;0,4;40;50;1,2
+Inline;8;0,5;50;40;1,2
+Inline;8;1;100;30;1,2

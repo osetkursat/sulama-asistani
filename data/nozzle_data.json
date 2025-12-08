@@ -1,0 +1,53 @@
+[
+  {
+    "Marka;Model;Nozul;Basınç (bar);Debi (L/dk);Yarıçap (m);Yağış Hızı (mm/saat)": "Rain Bird;Uni Sprey Serisi;US410 Sprey Sprink;2",
+    "field2": "1;5",
+    "field3": "5;3",
+    "field4": "1;71"
+  },
+  {
+    "Marka;Model;Nozul;Basınç (bar);Debi (L/dk);Yarıçap (m);Yağış Hızı (mm/saat)": "Rain Bird;Uni Sprey Serisi;US412 Sprey Sprink;2",
+    "field2": "1;4",
+    "field3": "51;3",
+    "field4": "7;40"
+  },
+  {
+    "Marka;Model;Nozul;Basınç (bar);Debi (L/dk);Yarıçap (m);Yağış Hızı (mm/saat)": "Rain Bird;Uni Sprey Serisi;US415 Sprey Sprink;2",
+    "field2": "1;7;4",
+    "field3": "6;40"
+  },
+  {
+    "Marka;Model;Nozul;Basınç (bar);Debi (L/dk);Yarıçap (m);Yağış Hızı (mm/saat)": "Rain Bird;Uni Sprey Serisi;US418 Sprey Sprink;2",
+    "field2": "1;10",
+    "field3": "1;5",
+    "field4": "5;40"
+  },
+  {
+    "Marka;Model;Nozul;Basınç (bar);Debi (L/dk);Yarıçap (m);Yağış Hızı (mm/saat)": "Rain Bird;Van Serisi;4 Van Nozul;2",
+    "field2": "1;1",
+    "field3": "7;1",
+    "field4": "2;139"
+  },
+  {
+    "Marka;Model;Nozul;Basınç (bar);Debi (L/dk);Yarıçap (m);Yağış Hızı (mm/saat)": "Rain Bird;Van Serisi;6 Van Nozul;2",
+    "field2": "1;2",
+    "field3": "3;1",
+    "field4": "8;86"
+  },
+  {
+    "Marka;Model;Nozul;Basınç (bar);Debi (L/dk);Yarıçap (m);Yağış Hızı (mm/saat)": "Rain Bird;Van Serisi;8 Van Nozul;2",
+    "field2": "1;4",
+    "field3": "5;2",
+    "field4": "4;94"
+  },
+  {
+    "Marka;Model;Nozul;Basınç (bar);Debi (L/dk);Yarıçap (m);Yağış Hızı (mm/saat)": "Rain Bird;3500 Series;3504 Rotor Sprink;3;11",
+    "field2": "13;9",
+    "field3": "4;15"
+  },
+  {
+    "Marka;Model;Nozul;Basınç (bar);Debi (L/dk);Yarıçap (m);Yağış Hızı (mm/saat)": "Rain Bird;5000 Series;5004 Rotor Sprink;3;11",
+    "field2": "4;12",
+    "field3": "1;9"
+  }
+]

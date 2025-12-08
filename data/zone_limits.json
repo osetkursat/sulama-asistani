@@ -1,0 +1,45 @@
+[
+  {
+    "Su Kaynağı;                Maks": {
+      " Debi (L/dk);Önerilen Maks Zone Debisi (L/dk);Basınç (bar)": "Şebeke (çok düşük);15;10;2"
+    }
+  },
+  {
+    "Su Kaynağı;                Maks": {
+      " Debi (L/dk);Önerilen Maks Zone Debisi (L/dk);Basınç (bar)": "Şebeke (düşük);20;14;2"
+    },
+    "field2": "5"
+  },
+  {
+    "Su Kaynağı;                Maks": {
+      " Debi (L/dk);Önerilen Maks Zone Debisi (L/dk);Basınç (bar)": "Şebeke (orta);30;21;3"
+    }
+  },
+  {
+    "Su Kaynağı;                Maks": {
+      " Debi (L/dk);Önerilen Maks Zone Debisi (L/dk);Basınç (bar)": "Şebeke (iyi);40;28;3"
+    }
+  },
+  {
+    "Su Kaynağı;                Maks": {
+      " Debi (L/dk);Önerilen Maks Zone Debisi (L/dk);Basınç (bar)": "Kuyu + hidrofor (orta);40;30;3"
+    },
+    "field2": "5"
+  },
+  {
+    "Su Kaynağı;                Maks": {
+      " Debi (L/dk);Önerilen Maks Zone Debisi (L/dk);Basınç (bar)": "Kuyu + hidrofor (güçlü);60;42;4"
+    }
+  },
+  {
+    "Su Kaynağı;                Maks": {
+      " Debi (L/dk);Önerilen Maks Zone Debisi (L/dk);Basınç (bar)": "Depo + hidrofor (standart);60;45;3"
+    },
+    "field2": "5"
+  },
+  {
+    "Su Kaynağı;                Maks": {
+      " Debi (L/dk);Önerilen Maks Zone Debisi (L/dk);Basınç (bar)": "Depo + hidrofor (güçlü);80;56;4"
+    }
+  }
+]

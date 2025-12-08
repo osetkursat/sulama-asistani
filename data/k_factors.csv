@@ -1,0 +1,71 @@
+﻿Eleman;        Ölçü;        K Katsayısı;Not
+Dirsek 90°;    20 mm;0,9;        PE100 standart dirsek
+Dirsek 90°;    25 mm;0,9;        PE100 standart dirsek
+Dirsek 90°;    32 mm;0,9;        PE100 standart dirsek
+Dirsek 90°;    40 mm;0,9;        PE100 standart dirsek
+Dirsek 90°;    50 mm;0,9;        PE100 standart dirsek
+Dirsek 90°;    63 mm;0,9;        PE100 standart dirsek
+Dirsek 90°;    75 mm;0,9;        PE100 standart dirsek
+Dirsek 90°;    90 mm;0,9;        PE100 standart dirsek
+Dirsek 90°;    110 mm;0,9;        PE100 standart dirsek
+;;;
+Dirsek 45°;    20 mm;0,4;        PE100 45° dirsek
+Dirsek 45°;    25 mm;0,4;        PE100 45° dirsek
+Dirsek 45°;    32 mm;0,4;        PE100 45° dirsek
+Dirsek 45°;    40 mm;0,4;        PE100 45° dirsek
+Dirsek 45°;    50 mm;0,4;        PE100 45° dirsek
+Dirsek 45°;    63 mm;0,4;        PE100 45° dirsek
+Dirsek 45°;    75 mm;0,4;        PE100 45° dirsek
+Dirsek 45°;    90 mm;0,4;        PE100 45° dirsek
+Dirsek 45°;    110 mm;0,4;        PE100 45° dirsek
+;;;
+Tee (ana hat);25 mm;0,6;        Geçişli – ana hat yönü
+Tee (ana hat);32 mm;0,6;        Geçişli – ana hat yönü
+Tee (ana hat);40 mm;0,6;        Geçişli – ana hat yönü
+Tee (ana hat);50 mm;0,6;        Geçişli – ana hat yönü
+Tee (ana hat);63 mm;0,6;        Geçişli – ana hat yönü
+Tee (ana hat);75 mm;0,6;        Geçişli – ana hat yönü
+Tee (ana hat);90 mm;0,6;        Geçişli – ana hat yönü
+Tee (ana hat);110 mm;0,6;        Geçişli – ana hat yönü
+;;;
+Tee (yan kol);25 mm;1,8;        Dal kol – çıkış
+Tee (yan kol);32 mm;1,8;        Dal kol – çıkış
+Tee (yan kol);40 mm;1,8;        Dal kol – çıkış
+Tee (yan kol);50 mm;1,8;        Dal kol – çıkış
+Tee (yan kol);63 mm;1,8;        Dal kol – çıkış
+Tee (yan kol);75 mm;1,8;        Dal kol – çıkış
+Tee (yan kol);90 mm;1,8;        Dal kol – çıkış
+Tee (yan kol);110 mm;1,8;        Dal kol – çıkış
+;;;
+Redüksiyon;    32×25 mm;0,3;        Konsantrik redüksiyon
+Redüksiyon;    40×32 mm;0,3;        Konsantrik redüksiyon
+Redüksiyon;    50×32 mm;0,3;        Konsantrik redüksiyon
+Redüksiyon;    63×40 mm;0,3;        Konsantrik redüksiyon
+Redüksiyon;    75×50 mm;0,3;        Konsantrik redüksiyon
+Redüksiyon;    90×63 mm;0,3;        Konsantrik redüksiyon
+Redüksiyon;    110×75 mm;0,3;        Konsantrik redüksiyon
+;;;
+Solenoid Vana;"1""";4;        HV / TBOS tam açık
+Solenoid Vana;"1 1/2""";4;        PGA / TBOS tam açık
+Solenoid Vana;"2""";4;        PGA / TBOS tam açık
+;;;
+Küresel Vana;"3/4""";0,1;        Tam geçişli, tam açık
+Küresel Vana;"1""";0,1;        Tam geçişli, tam açık
+Küresel Vana;"1 1/2""";0,1;        Tam geçişli, tam açık
+Küresel Vana;"2""";0,1;        Tam geçişli, tam açık
+;;;
+Çekvalf;"        3/4""";2;        Salınımlı (swing) tip
+Çekvalf;"        1""";2;        Salınımlı (swing) tip
+Çekvalf;"        1 1/2""";2;        Salınımlı (swing) tip
+Çekvalf;"        2""";2;        Salınımlı (swing) tip
+;;;
+Filtre Disk;"    3/4""";3;        120–155 mesh disk filtre
+Filtre Disk;"    1""";3;        120–155 mesh disk filtre
+Filtre Disk;"    1 1/2""";3;        120–155 mesh disk filtre
+Filtre Disk;"    2""";3;        120–155 mesh disk filtre
+;;;
+Basınç Reg.;"    3/4""";3;        Sabit çıkışlı regülatör
+Basınç Reg.;"    1""";3;        Sabit çıkışlı regülatör
+;;;
+Manifold Girişi;"1""";1;        Kolektör ana giriş parçası
+Manifold Çıkışı;"1""";1;        Kolektör çıkış nipeli
