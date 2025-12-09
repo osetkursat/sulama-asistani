@@ -304,28 +304,141 @@ app.post("/purchase", (req, res) => {
 app.post("/chat", async (req, res) => {
   let { message, user, mode, designData } = req.body;
 
-  // 1) Kullanıcı doğrulama
+  // 1) Kullanıcı doğrulama (DEV modu: user gelmezse guest kullan)
   if (!user || !user.email) {
-    return res.status(400).json({ error: "Kullanıcı bilgisi eksik." });
+    user = { email: "guest@sulamaasistani.local" };
   }
 
-  // 2) Sistemdeki kullanıcıyı çek
+  // 2) Sistemdeki kullanıcıyı çek / yoksa oluştur
   let users = loadUsers();
   let currentUser = users.find((u) => u.email === user.email);
+
   if (!currentUser) {
-    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+    currentUser = {
+      email: user.email,
+      password: "",
+      limit: 9999,          // Lokal geliştirme için bol limit
+      used: 0,
+      memory: [],
+      projects: [],
+      createdAt: new Date().toISOString()
+    };
+
+    users.push(currentUser);
+    saveUsers(users);
   }
 
-  // 3) Limit kontrolü
-  if (currentUser.used >= currentUser.limit) {
-    return res
-      .status(403)
-      .json({ error: "Soru hakkınız doldu. Paket satın almanız gerekiyor." });
-  }
+  // 3) Hafıza (son 20 mesaj) – BUNU currentUser oluştuKTAN SONRA yap
+  const history = Array.isArray(currentUser.memory)
+    ? currentUser.memory.slice(-20)
+    : [];
+
 
   // 4) Sulama / sulama dışı sınıflandırma
   const category = await classifyIrrigation(message);
-  if (category === "NON_IRRIGATION") {
+
+  // --- Sulama bağlamı var mı? (geçmiş user mesajlarına bak) ---
+  const hasHistory = Array.isArray(history) && history.length > 0;
+
+  let irrigationContextText = "";
+  if (hasHistory) {
+    irrigationContextText = history
+      .filter((m) => m.role === "user")
+      .map((m) => (m.content || "").toLowerCase())
+      .join(" ");
+  }
+
+  const hasIrrigationInHistory =
+    irrigationContextText.includes("bahçe") ||
+    irrigationContextText.includes("bahce") ||
+    irrigationContextText.includes("sulama") ||
+    irrigationContextText.includes("sprink") ||
+    irrigationContextText.includes("sprinkler") ||
+    irrigationContextText.includes("damla") ||
+    irrigationContextText.includes("damlama") ||
+    irrigationContextText.includes("vana") ||
+    irrigationContextText.includes("m²") ||
+    irrigationContextText.includes("m2");
+
+  // Kullanıcı kısa yanıt istiyorsa (varsayılan), modeli en fazla 3 cümleye ZORLA
+let finalUserMessage = message;
+const isDetailRequest = /detaylı|detayli|uzun|hesap|metraj|tam liste|tam malzeme|hidrolik|basınç hesabı/i.test(message);
+
+if (!isDetailRequest) {
+  finalUserMessage =
+    "KURAL: Bana en fazla 3 cümlelik KISA bir cevap ver. Liste, paragraf, başlık, teknik açıklama, uzun metin yasak. Soruma sadece kısa, net ve tek noktadan cevap ver.\nKULLANICI MESAJI: " +
+    message;
+}
+
+
+  // --- Mesaj tipi: sayı mı, devam isteği mi? ---
+  const msg = (message || "").toLowerCase();
+
+  const isNumericFollowup =
+    typeof msg === "string" &&
+    msg.length <= 30 &&
+    /\d/.test(msg) &&
+    hasHistory;
+
+  // Kısa devam sorularını, ürün listesi ve fiyat isteyen soruları da kapsa
+  const continuationKeywords = [
+    "detay",
+    "detaylı",
+    "devam",
+    "anlat",
+    "hangi",
+    "nasıl",
+    "neresi",
+    "nereden",
+    "hangisi",
+    "tamam",
+    "yaz",
+    "evet",
+    // Ürün / liste / fiyat odaklı devam soruları
+    "ürün",
+    "urun",
+    "liste",
+    "listesini",
+    "ürün listesi",
+    "urun listesi",
+    "ürün listesini",
+    "urun listesini",
+    "fiyat",
+    "fiyatı",
+    "fiyatı nedir",
+    "fiyatları",
+    "fiyatlarını",
+    "fiyat bilgisi",
+    "fiyatlarıyla",
+    "fiyatlariyla",
+    "verir misin",
+    "yazar mısın",
+    "yazarmısın",
+    "çıkarır mısın",
+    "cikarir misin"
+  ];
+
+  const isContinuationFollowup =
+    typeof msg === "string" &&
+    msg.length <= 160 && // "tam ürün listesini fiyatlarıyla verir misin?" gibi cümlelere izin
+    continuationKeywords.some((kw) => msg.includes(kw)) &&
+    hasHistory;
+
+  // --- Etkin kategori ---
+  let effectiveCategory = category;
+
+  // Eğer model "NON_IRRIGATION" dese bile,
+  // geçmişte sulama konuşuyorsak ve bu mesaj sadece kısa bir devam isteğiyse → SULAMA say
+  if (
+    category === "NON_IRRIGATION" &&
+    hasIrrigationInHistory &&
+    (isNumericFollowup || isContinuationFollowup)
+  ) {
+    effectiveCategory = "IRRIGATION";
+  }
+
+  // NON_IRRIGATION kontrolü artık effectiveCategory üzerinden
+  if (effectiveCategory === "NON_IRRIGATION") {
     const remaining = currentUser.limit - currentUser.used;
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Transfer-Encoding", "chunked");
@@ -336,6 +449,7 @@ app.post("/chat", async (req, res) => {
     );
     return res.end();
   }
+
 
   // 5) Ürün eşleme: soruya göre PRICE_LIST’ten ilgili ürünleri bul
   const relatedProducts = findRelatedProducts(message, 8);
@@ -371,76 +485,168 @@ app.post("/chat", async (req, res) => {
 
   // 6) Sulama Asistanı sistem prompt'u
   let systemPrompt = `
-Sen “Sulama Asistanı” adında, Türkiye şartlarına göre çalışan profesyonel bir bahçe sulama danışmanısın. Özellikle villa bahçeleri, site içi peyzaj alanları ve küçük tarımsal/parsel bahçeleri için tasarım, ürün seçimi, maliyet analizi ve hazır set önerileri konusunda uzmansın.
+Sen “Sulama Asistanı” adında, Türkiye şartlarına göre çalışan profesyonel bir sulama danışmanısın.
+Villa / peyzaj bahçeleri için sprinkler ve damla sulama projelendirme, ürün seçimi, maliyet mantığı ve hazır set önerileri konusunda uzmansın.
 
-KESİN KURAL:
-- Sulama ile ilgisi olmayan (ör: yazılım, JSON, bilgisayar, internet, sağlık, ilişkiler, tarih, finans, oyun, eğitim vb.) sorulara cevap verme.
-- Böyle bir soru gelmişse kullanıcına sadece kısaca “Bu soru sulama kapsamım dışında. Ben sadece bahçe, tarla ve peyzaj sulama sistemleriyle ilgili yardımcı olabilirim.” de ve konuyu sulamaya çek.
+KESİN KURAL
+- Sulama ile ilgisi olmayan (ör: yazılım, JSON, bilgisayar, internet, ilişki, tarih, finans, oyun, eğitim vb.) sorulara cevap verme.
+- Böyle bir soru gelirse sadece kısaca: 
+  "Bu soru sulama sistemleriyle ilgili değil. Ben sadece bahçe sulama, damlama, sprinkler ve otomatik sulama sistemleriyle ilgili yardımcı olabilirim."
+  de ve konuyu sulamaya çek.
 
 DİL ve TON
 - Kullanıcıyla her zaman TÜRKÇE konuş.
-- Samimi ama profesyonel ol; teknik bilgiyi sade dille açıkla.
-- Gereksiz süslü, duygusal, edebî cümleler kullanma.
-- Kısa, net ve adım adım ilerleyen cevaplar ver.
-- Gerektiğinde hafif espri yapabilirsin ama asıl odak: net teknik fayda.
-- Kullanıcıyı asla küçümseme; “sıfır bilgili” kullanıcı bile her adımı anlayabilmeli.
+- Samimi ama profesyonel ol; teknik bilgiyi sade dille anlat.
+- Gereksiz süslü, duygusal, edebî cümleler KULLANMA.
+- Kullanıcıyı asla küçümseme; sıfır bilgili bir bahçe sahibi bile her adımı anlayabilmeli.
 
-GENEL DAVRANIŞ
-- Kullanıcı bir şey sorduğunda veya bahçesini anlattığında ASLA ilk mesajda tüm bahçeye ait uzun, tam proje çıkarma.
-- Varsayılan modun: KISA & ADIMLI cevap.
-- Her mesajında genel olarak şu yapıyı takip et:
-  1) Kullanıcının yazdığını en fazla 1–3 cümleyle özetle.
-  2) 1 küçük yorum veya teknik yönlendirme yap.
-  3) Sonraki adım için 1–3 adet NET, KISA soru sor.
+GENEL DAVRANIŞ (ÇOK ÖNEMLİ)
 
-- Kullanıcı özellikle şu kelimeleri kullanmadıkça:
-  “detaylı proje”, “tüm planı çıkar”, “malzeme listesi ver”, “PDF proje”, “tam teknik hesapla”, “detaylı metraj”
-  → Tüm boru çaplarını, ayrıntılı zone hesabını, metre metre boru metrajını ve dev bir metin halinde proje DÖKME.
+- Kullanıcının sorusunu önce niyetine göre analiz et:
+  1) Sorunun amacı kısa bir bilgi almak mı?
+  2) Yoksa mühendislik/teknik analiz, basınç hesabı, zone planı, proje detayı gibi derin bir açıklama mı istiyor?
 
-UZMANLIK ALANI
-- Peyzaj sulama: çim için pop-up sprinkler, rotorlar, sprey başlıklar, damla sulama, mini spring, mikrosprink.
-- Ana borulama: PE100 borular, vana grupları, kolektör, filtre, basınç regülatörü, otomasyon sistemleri (kontrol üniteleri, vanalar, kablolama).
-- Su kaynakları: şebeke suyu, kuyu, depo + hidrofor, terfi sistemleri.
-- Türkiye’de tipik su basınç ve debi koşulları, bahçe boyutları ve malzeme erişilebilirliği.
-- Maliyet hesabı: ürün birim fiyat listesi verilmişse ona göre, verilmemişse makul tahmini aralıklarla konuş.
+--------------------------------------------
+1) KISA SORULARDA (varsayılan format)
+--------------------------------------------
+- Genel, kısa, yönlendirici veya basit bilgi isteyen sorularda cevabın:
+  → EN FAZLA 3 CÜMLE olacak.
+- Format her zaman şu:
+  1) Kullanıcının isteğini tek bir cümleyle özetle.
+  2) Zone / boru çapı / ürün tipi gibi temel yönlendirmeyi tek cümlede ver.
+  3) Bir sonraki adımı belirten 1 cümlelik yönlendirme yap.
+- Bu modda:
+  • Madde işareti kullanma.
+  • Tablo verme.
+  • Uzun paragraf yazma.
+  • Teknik sayı detayına girme (bar, L/dk vs).
+  • Proje şeması, hesap veya metraj çıkarma.
+- Kısa format; “Tamam”, “yaz”, “evet”, “devam”, “hangi”, “nasıl”, “ürünleri yazar mısın?” gibi basit takip sorularında da geçerlidir.
+
+--------------------------------------------
+2) DETAYLI TEKNİK / MÜHENDİSLİK SORULARINDA
+--------------------------------------------
+- Eğer kullanıcı şu tarz ifadeler kullanırsa:
+  “detaylı anlat”, 
+  “basınç kaybı hesabı yap”, 
+  “neden düşüyor açıklayarak yaz”, 
+  “boru çapı hesapla”, 
+  “hidrolik hesap”, 
+  “zone planını çıkar”, 
+  “detaylı proje ver”, 
+  “metraj çıkar”, 
+  “tam malzeme listesi”,
+  “teknik olarak açıkla”
+→ Bu durumda 3 cümle kuralı uygulanmaz.
+
+- Bu modda yazım kuralları:
+  • Cevabı 2–5 ARASI KISA PARAGRAFA böl.
+  • Her paragraf 2–3 cümleden oluşsun.
+  • Teknik değerler gerekiyorsa bar, L/dk, debi limitleri, boru sürtünme kayıpları gibi sayıları kullanabilirsin.
+  • Açıklamalar net, adım adım ve kullanıcıyı boğmadan olmalı.
+  • Roman gibi tek blok yazma; her paragraf tek bir fikri anlatsın.
+  • Okunabilirlik her zaman önceliklidir.
+  • Gerekirse küçük madde işaretleri kullanılabilir.
+
+--------------------------------------------
+3) FİYAT VE MALZEME LİSTESİ İSTENDİĞİNDE
+--------------------------------------------
+- Kullanıcı “ürün listesi”, “tam liste”, “malzeme listesi”, “fiyatlarla yaz” gibi şeyler söylerse:
+  • 3 cümle formatı devre dışı kalır.
+  • Liste şeklinde yazmak serbesttir.
+  • Fiyat istiyorsa fiyat ver (ürün fiyatı sistemde yoksa bunu belirt).
+  • Sprink/rotor adetlerine göre priz kolye + kaplin erkek dirsek kuralını uygula.
+
+--------------------------------------------
+4) ÜSLUP
+--------------------------------------------
+- Ton: sakin, net, profesyonel ve kolay anlaşılır.
+- Kullanıcı teknik bilmiyormuş gibi yaz ama aptal yerine koyma.
+- Gereksiz edebiyat, süslü anlatım, “roman tarzı” uzun akışlar yasak.
+- Her cevap son derece fonksiyonel ve amaca yönelik olmalı.
+
+--------------------------------------------
+5) NE ZAMAN FORMAT DEĞİŞTİRİLMEZ?
+--------------------------------------------
+- Kullanıcı net olarak “kısa yaz”, “özet yaz” derse → 3 cümleye dön.
+- Kullanıcı format talep etmiyorsa otomatik analizle uygun moda geç.
+
+
+
+İÇ VERİ SETLERİ (KULLANICIYA GÖSTERME)
+- Arkada PRICE_LIST, READY_SETS, NOZZLE_DATA, DRIP_DATA, PE100_FRICTION, ZONE_LIMITS ve K_FACTORS gibi JSON tabloları kullanıyorsun.
+- Bunlar senin iç veri tabanındır; CEVAPLARINDA BU İSİMLERİ ASLA ANMA.
+- Kullanıcıya bunlardan bahsederken sadece doğal Türkçe kullan:
+  - “nozul verileri” veya “sprinkler debi tablosu”,
+  - “damla sulama verileri” veya “damlama hat debi tablosu”,
+  - “PE100 basınç kaybı tablosu”,
+  - “bağlantı kaybı katsayıları” vb.
+- Asla şu kelimeleri yazma:
+  "NOZZLE_DATA", "DRIP_DATA", "PE100_FRICTION", "K_FACTORS", "PRICE_LIST", "READY_SETS", "ZONE_LIMITS".
+
+BORU ÇAPI / LATERAL KURALI
+- Ana hat (şebekeden veya hidrofordan vana kutusuna kadar) için varsayılan boru çapın: PE100 32 mm.
+- Zone içi LATERAL hatlarda (vana → sprinkler / damla boru) varsayılan boru çapın: PE100 20 mm’dir; BUNU DEĞİŞTİRME.
+- Villa / peyzaj bahçelerinde lateraller için 25 mm veya 32 mm boru ÖNERME; özellikle “lateral” kelimesi geçen hiçbir cümlede 25 mm yazma.
+- Lateral boru söylemen gerekiyorsa sadece şöyle yaz:
+  "PE100 20 mm lateral hat (SKU: KALPE1002016)".
+- 25 mm boru sadece gerekiyorsa çok kısa ana bağlantılarda veya kolektör yanlarında kullanılabilir; bunu da 1 cümleyi geçmeyecek şekilde, teknik detaya boğmadan yaz.
+
+MALZEME LİSTESİ – PRİZ KOLYE ve ERKEK DİRSEK KURALI
+- Ana hat borusu 32 mm veya 40 mm ise ve sistemde sprinkler veya rotor kullanıyorsan:
+  - Toplam sprinkler + rotor adedi kadar uygun çapta priz kolye ver.
+  - Her bir priz kolye için 2 adet 20 mm x 1/2" kaplin dış dişli (erkek) dirsek ver.
+- Bu kuralı formül olarak AKLINDA TUT:
+  - priz kolye adedi = sprinkler adedi + rotor adedi
+  - 20 x 1/2" kaplin dış dişli erkek dirsek adedi = (sprinkler + rotor) x 2
+- Malzeme listesi yazarken bu adetleri NET ve AÇIK şekilde cümleyle belirt:
+  Örnek ifade: "10 adet rotor için 10 adet 32 mm priz kolye ve 20 adet 20 x 1/2\" kaplin dış dişli erkek dirsek gerekir."
+- Varsayılan cevapta SKU vermek zorunda değilsin; kullanıcı özellikle kod istemedikçe sadece ürün tipini yaz.
 
 FİYAT KURALLARI
-Aşağıda ilgili ürünler ve fiyatları yer alıyor.
+- PRICE_LIST ve productContext içindeki fiyatlar senin için referanstır, ama kullanıcıya HER ZAMAN fiyat vermek zorunda değilsin.
+- Kullanıcı özellikle “fiyat”, “kaç TL”, “maliyeti ne”, “bütçe”, “metre fiyatı”, “toplam ne tutar” gibi kelimelerle fiyat/maliyet sormadıkça:
+  - Ürünleri TL cinsinden fiyatla yazma.
+  - İstersen sadece: “İstersen bu ürünlerin yaklaşık fiyatlarını da yazabilirim.” diye teklif et.
+- Kullanıcı açıkça fiyat veya maliyet sorarsa:
+  - productContext’teki fiyatı kullan ve kısa yaz: 
+    "Bu ürünün toptansulama.com’daki güncel fiyatı yaklaşık X TL’dir." 
+  - Birden çok ürün varsa 3–5 satırı geçmeyecek şekilde en önemli ürünleri özetle.
+  - productContext’te fiyat yoksa: 
+    "Bu ürünün fiyatı listemde yok; güncel fiyat için toptansulama.com’dan bakman daha doğru olur." de.
 
-- productContext içinde bir ürünün satırı varsa, PRICE_LIST’te vardır ve fiyatı kesindir.
-- Bu ürünler için kesinlikle “Benim sistemimde fiyat bilgisi yok” DEME.
-- Sadece productContext içinde yer almayan veya fiyatMetni “FİYAT BİLGİSİ CSV'DE YOK” olan ürünler için fiyat yok de.
-- Fiyat sorularında productContext’te verilen fiyatı DIRECT kullan.
+ÜRÜN KODU ve TEKNİK DETAY KURALI
+- Varsayılan cevaplarda ürün KODU / SKU yazma; sadece ürün tipini ve markasını söyle (örneğin “Rain Bird 3504 rotor sprinkler” gibi).
+- Kullanıcı özellikle “ürün kodlarını da yazar mısın”, “SKU lazım”, “stok kodu ver” gibi istemedikçe SKU göstermeyi yasak kabul et.
+- Varsayılan cevaplarda ayrıntılı debi / basınç hesabı (L/dk, bar, ~0,3–0,4 bar vb.) yazma; sadece “basınç açısından uygundur” veya “hidrolik açıdan yeterli olur” gibi kısa ifadeler kullan.
+- Kullanıcı özellikle “hidrolik hesabını da yaz”, “basınç / debi hesabını göster” derse bir SONRAKİ cevabında teknik sayıları kullanarak detay verebilirsin.
 
-MALİYET / ÜRÜN / SET mantığın ve diğer tüm kurallar için: kısa konuş, önce özet ver, sonra gerekiyorsa detaylandır. PRICE_LIST, READY_SETS ve teknik tablolar sana sistem tarafından ayrıca verilecek.
+SATIN ALMA / SİTE YÖNLENDİRMESİ
+- Uygun yerlerde kısaca:
+  "Bu ürünü toptansulama.com üzerinden temin edebilirsin."
+  diye yönlendirme yap.
+- Kullanıcı “nereden alırım”, “hangi siteden”, “online alabilir miyim”, “link var mı” gibi sorular sorarsa:
+  - Öncelikle toptansulama.com’u öner; başka site ismi vermene gerek yok.
+- Çok uzun tanıtım yapma; yönlendirme 1 cümleyi geçmesin.
+
+UZMANLIK ALANI
+- Peyzaj / villa bahçesi sulama:
+  - Çim alanlar için pop-up sprinkler, rotorlar, rotary nozullar (Rain Bird marka).
+  - Çiçek, çalı, bordür ve sebze alanları için damlama ve mini-sprink sistemleri.
+- Ana borulama ve ekipman:
+  - PE100 borular, vana grupları, kolektör, filtre, vana kutuları, otomasyon (kontrol ünitesi, kablolama).
+- Su kaynakları:
+  - Şebeke suyu, kuyu, depo + hidrofor, terfi sistemleri; Türkiye’de tipik basınç / debi koşulları.
+- Maliyet mantığı:
+  - Ürün birim fiyat listesi varsa ona göre, yoksa sadece “düşük/orta/yüksek maliyet” gibi niteliksel yorum yap.
+
+GENEL ÖZET
+- Kısa yaz, en fazla 4 cümle.
+- Lateral borularda varsayılan PE100 20 mm (KALPE1002016) kullan.
+- Fiyatları sadece kullanıcı sorarsa ver; aksi durumda fiyat yazma, sadece ürün tiplerini ve grupları söyle.
+- Mümkün olduğunda toptansulama.com’a yönlendir.
+- İç veri seti isimlerini asla gösterme; her şeyi son kullanıcı gözüyle, sade Türkçe ve sulama odaklı anlat.
 `;
-
-  // Özel tasarım modu ise prompt'u genişlet
-  if (mode === "design") {
-    systemPrompt += `
-KULLANICI ÖZEL TASARIM MODUNU AÇTI.
-Cevabını şu başlıklarla ver:
-
-1) Proje özeti
-2) Zone planı (alan, debi, tip)
-3) Malzeme listesi (adet + açıklama + yaklaşık fiyat aralığı, TL)
-4) Toplam maliyet aralığı (minimum - maksimum, TL)
-5) Montaj notları (pratik öneriler)
-
-Türkiye koşullarına göre dengeli ve gerçekçi öneri yap.
-`;
-
-    // Kullanıcının ham tasarım verisini net şekilde ilet
-    message =
-      `ÖZEL TASARIM TALEBİ:\n` +
-      JSON.stringify(designData || {}, null, 2) +
-      `\n\nLütfen yukarıdaki kurallara göre detaylı cevapla.`;
-  }
-
-  // Hafıza (son 20 mesaj)
-  const history = Array.isArray(currentUser.memory)
-    ? currentUser.memory.slice(-20)
-    : [];
 
   // JSON veri context'i (fiyat listesi, hazır setler, teknik tablolar)
   const dataContext = `
@@ -455,19 +661,15 @@ K_FACTORS = ${JSON.stringify(K_FACTORS)};
 
   const messages = [
     { role: "system", content: systemPrompt },
-    { role: "system", content: dataContext },
+    { role: "assistant", content: "(Bu iç veri setidir, kullanıcıya gösterme.) " + dataContext },
   ];
 
   if (productContext) {
     messages.push({
-      role: "system",
+      role: "assistant",
       content:
-        "Aşağıda kullanıcının sorusuyla yüksek ihtimalle ilişkili ürünler ve TL fiyatları var.\n" +
-        "- Bu tabloda her satır 'SKU', 'Ürün' ve 'Fiyat:' ile başlar.\n" +
-        "- 'Fiyat:' kısmı 'FİYAT BİLGİSİ CSV'DE YOK' yazmıyorsa, o ürün için CSV'de geçerli bir TL fiyatı vardır.\n" +
-        "- Bu durumdayken 'Benim sistemimde bu ürünün fiyat bilgisi yok' DEMEK YASAKTIR.\n" +
-        "- Sadece 'FİYAT BİLGİSİ CSV'DE YOK' yazan ürünler için gerçekten fiyat olmadığını söyleyebilirsin.\n" +
-        "- Özellikle fiyat sorularında, önce aşağıdaki tabloya bak ve oradaki TL fiyatı aynen kullan.\n\n" +
+        "(Bu tablo yalnızca senin dahili referansındır, kullanıcıya ASLA aynen yazma) \n" +
+        "Kullanıcı FİYAT sorarsa bu tabloyu referans alabilirsin. Fiyat sormazsa TL bilgisi verme.\n\n" +
         productContext,
     });
   }
@@ -704,6 +906,295 @@ app.post("/admin/update-user", requireAdmin, (req, res) => {
     used: user.used,
     remaining: user.limit - user.used,
   });
+});
+
+// ------------------------------------------------------
+// POST /api/sulama – JSON cevap (chat + proje paneli için)
+// ------------------------------------------------------
+
+app.post("/api/sulama", async (req, res) => {
+  let { message, user, mode, designData, project } = req.body || {};
+
+  if (!message || typeof message !== "string") {
+    return res.status(400).json({ error: "message zorunlu." });
+  }
+
+  // 1) Kullanıcı doğrulama (guest fallback)
+  if (!user || !user.email) {
+    user = { email: "guest@sulamaasistani.local" };
+  }
+
+  // 2) Kullanıcıyı çek / yoksa oluştur
+  let users = loadUsers();
+  let currentUser = users.find((u) => u.email === user.email);
+
+  if (!currentUser) {
+    currentUser = {
+      email: user.email,
+      password: "",
+      limit: 9999,
+      used: 0,
+      memory: [],
+      projects: [],
+      createdAt: new Date().toISOString(),
+    };
+    users.push(currentUser);
+    saveUsers(users);
+  }
+
+  const history = Array.isArray(currentUser.memory)
+    ? currentUser.memory.slice(-20)
+    : [];
+
+  // 3) Sınıflandırma
+  const category = await classifyIrrigation(message);
+
+  let irrigationContextText = "";
+  const hasHistory = Array.isArray(history) && history.length > 0;
+
+  if (hasHistory) {
+    irrigationContextText = history
+      .filter((m) => m.role === "user")
+      .map((m) => (m.content || "").toLowerCase())
+      .join(" ");
+  }
+
+  const hasIrrigationInHistory =
+    irrigationContextText.includes("bahçe") ||
+    irrigationContextText.includes("bahce") ||
+    irrigationContextText.includes("sulama") ||
+    irrigationContextText.includes("sprink") ||
+    irrigationContextText.includes("sprinkler") ||
+    irrigationContextText.includes("damla") ||
+    irrigationContextText.includes("damlama") ||
+    irrigationContextText.includes("vana") ||
+    irrigationContextText.includes("m²") ||
+    irrigationContextText.includes("m2");
+
+  const msg = (message || "").toLowerCase();
+
+  const isNumericFollowup =
+    typeof msg === "string" &&
+    msg.length <= 30 &&
+    /\d/.test(msg) &&
+    hasHistory;
+
+  const continuationKeywords = [
+    "detay",
+    "detaylı",
+    "devam",
+    "anlat",
+    "hangi",
+    "nasıl",
+    "neresi",
+    "nereden",
+    "hangisi",
+    "tamam",
+    "yaz",
+    "evet",
+    "ürün",
+    "urun",
+    "liste",
+    "listesini",
+    "ürün listesi",
+    "urun listesi",
+    "ürün listesini",
+    "urun listesini",
+    "fiyat",
+    "fiyatı",
+    "fiyatı nedir",
+    "fiyatları",
+    "fiyatlarını",
+    "fiyat bilgisi",
+    "fiyatlarıyla",
+    "fiyatlariyla",
+    "verir misin",
+    "yazar mısın",
+    "yazarmısın",
+    "çıkarır mısın",
+    "cikarir misin",
+  ];
+
+  const isContinuationFollowup =
+    typeof msg === "string" &&
+    msg.length <= 160 &&
+    continuationKeywords.some((kw) => msg.includes(kw)) &&
+    hasHistory;
+
+  let effectiveCategory = category;
+
+  if (
+    category === "NON_IRRIGATION" &&
+    hasIrrigationInHistory &&
+    (isNumericFollowup || isContinuationFollowup)
+  ) {
+    effectiveCategory = "IRRIGATION";
+  }
+
+  if (effectiveCategory === "NON_IRRIGATION") {
+    const reply =
+      "Bu soru sulama kapsamım dışında. Ben sadece bahçe, tarla ve peyzaj sulama sistemleriyle ilgili yardımcı olabilirim.";
+    return res.json({ reply });
+  }
+
+  // 4) Ürün eşleme
+  const relatedProducts = findRelatedProducts(message, 8);
+
+  let productContext = "";
+  if (relatedProducts.length > 0) {
+    productContext =
+      "İLGİLİ ÜRÜNLER VE FİYATLAR (CSV'den):\n" +
+      relatedProducts
+        .map((p) => {
+          const temizFiyat = getProductPriceText(p).trim();
+          let fiyatMetni;
+
+          if (
+            !temizFiyat ||
+            temizFiyat === "0" ||
+            temizFiyat === "0,00" ||
+            temizFiyat === "0.00"
+          ) {
+            fiyatMetni =
+              "FİYAT BİLGİSİ CSV'DE YOK (bu ürün için fiyat UYDURMA, müşteriye fiyat veremediğini söyle)";
+          } else {
+            fiyatMetni = `${temizFiyat} TL (CSV)`;
+          }
+
+          return `- SKU: ${p["SKU"]} | Ürün: ${p["Ürün Adı"]} | Fiyat: ${fiyatMetni}`;
+        })
+        .join("\n");
+  }
+
+  // 5) Sistem prompt'u (aynı ama proje bilgisiyle güçlendirilmiş)
+  let systemPrompt2 = `
+Sen “Sulama Asistanı” adında, Türkiye şartlarına göre çalışan profesyonel bir sulama danışmanısın.
+Villa / peyzaj bahçeleri için sprinkler ve damla sulama projelendirme, ürün seçimi, maliyet mantığı ve hazır set önerileri konusunda uzmansın.
+
+AŞAĞIDAKİ PROJE ÖN BİLGİLERİNİ MUTLAKA DİKKATE AL:
+${project ? JSON.stringify(project, null, 2) : "(Proje bilgisi kısıtlı veya yok)"}
+
+Diğer tüm kurallar, üslup ve davranış biçimi /chat endpoint’inde tarif edilenle aynıdır:
+- Kısa sorularda en fazla 3 cümle.
+- Detaylı teknik istenirse 2–5 kısa paragraf.
+- Lateral hatlarda PE100 20 mm kullan, 25 mm lateral önermemek vb.
+`;
+
+  if (mode === "design") {
+    systemPrompt2 += `
+KULLANICI ÖZEL TASARIM MODUNU AÇTI.
+Cevabını şu başlıklarla ver:
+
+1) Proje özeti
+2) Zone planı (alan, debi, tip)
+3) Malzeme listesi (adet + açıklama + yaklaşık fiyat aralığı, TL)
+4) Toplam maliyet aralığı (minimum - maksimum, TL)
+5) Montaj notları (pratik öneriler)
+
+Türkiye koşullarına göre dengeli ve gerçekçi öneri yap.
+`;
+    message =
+      `ÖZEL TASARIM TALEBİ:\n` +
+      JSON.stringify(designData || {}, null, 2) +
+      `\n\nLütfen yukarıdaki kurallara göre detaylı cevapla.`;
+  }
+
+  const dataContext2 = `
+PRICE_LIST = ${JSON.stringify(PRICE_LIST)};
+READY_SETS = ${JSON.stringify(READY_SETS)};
+NOZZLE_DATA = ${JSON.stringify(NOZZLE_DATA)};
+PE100_FRICTION = ${JSON.stringify(PE100_FRICTION)};
+DRIP_DATA = ${JSON.stringify(DRIP_DATA)};
+ZONE_LIMITS = ${JSON.stringify(ZONE_LIMITS)};
+K_FACTORS = ${JSON.stringify(K_FACTORS)};
+`;
+
+  const messages = [
+    { role: "system", content: systemPrompt2 },
+    {
+      role: "assistant",
+      content: "(Bu iç veri setidir, kullanıcıya gösterme.) " + dataContext2,
+    },
+  ];
+
+  if (productContext) {
+    messages.push({
+      role: "assistant",
+      content:
+        "(Bu tablo yalnızca senin dahili referansındır, kullanıcıya ASLA aynen yazma) \n" +
+        "Kullanıcı FİYAT sorarsa bu tabloyu referans alabilirsin. Fiyat sormazsa TL bilgisi verme.\n\n" +
+        productContext,
+    });
+  }
+
+  messages.push(
+    ...history.map((m) => ({ role: m.role, content: m.content })),
+    { role: "user", content: message }
+  );
+
+  // Kullanım arttır
+  currentUser.used += 1;
+  saveUsers(users);
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: "gpt-5.1",
+      messages,
+    });
+
+    const reply =
+      completion.choices?.[0]?.message?.content ||
+      "Asistan şu anda yanıt üretemedi.";
+
+    // Hafızaya yaz
+    try {
+      users = loadUsers();
+      currentUser = users.find((u) => u.email === user.email);
+      if (currentUser) {
+        if (!Array.isArray(currentUser.memory)) currentUser.memory = [];
+        currentUser.memory.push({ role: "user", content: message });
+        currentUser.memory.push({ role: "assistant", content: reply });
+
+        if (currentUser.memory.length > 40) {
+          currentUser.memory = currentUser.memory.slice(-40);
+        }
+
+        if (mode === "design") {
+          if (!Array.isArray(currentUser.projects)) currentUser.projects = [];
+          const now = new Date();
+          const id = String(now.getTime());
+          const title =
+            (designData && designData.title) ||
+            `Özel Tasarım - ${now.toLocaleString("tr-TR")}`;
+
+          currentUser.projects.push({
+            id,
+            title,
+            type: "design",
+            createdAt: now.toISOString(),
+            summary: reply.slice(0, 400),
+            content: reply,
+            rawDesignData: designData || {},
+          });
+        }
+
+        saveUsers(users);
+      }
+    } catch (err) {
+      console.error("JSON endpoint sonrası hafıza kaydetme hatası:", err);
+    }
+
+    // Şimdilik sadece reply dönüyoruz; ileride projectUpdate ekleriz
+    return res.json({
+      reply,
+      projectUpdate: null,
+    });
+  } catch (err) {
+    console.error("/api/sulama OpenAI hata:", err);
+    return res
+      .status(500)
+      .json({ error: "Sunucu hatası: Asistan şu anda yanıt veremiyor." });
+  }
 });
 
 // ------------------------------------------------------

@@ -2,373 +2,1206 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sulama Asistanı</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- PDF için jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+<script src="C:\sulamaasistani\Roboto-normal.js"></script>
+
+
+
+
 
   <style>
     :root {
-      --green-dark: #1b5e20;
-      --green-light: #e8f5e9;
-      --bg: #f5f7fa;
-      --border: #c8e6c9;
-      --text-main: #222;
-      --text-sub: #555;
+      --bg: #f3f6fb;
+      --bg-alt: #ffffff;
+      --primary: #1b8a5a;
+      --primary-soft: #e1f5ec;
+      --border: #d4dce8;
+      --text: #1c2533;
+      --text-soft: #6b7280;
+      --radius-lg: 18px;
+      --radius-md: 12px;
+      --shadow-soft: 0 14px 35px rgba(15, 23, 42, 0.12);
+      --shadow-light: 0 8px 20px rgba(15, 23, 42, 0.08);
     }
-
-    * {
-      box-sizing: border-box;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      margin: 0;
-      background: var(--bg);
-      font-family: Arial, sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, #e0f7f4, #f3f6fb);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+    }
+    .app-shell {
+      max-width: 1200px;
+      width: 100%;
+      margin: 24px;
+      background: linear-gradient(135deg, #f9fafb, #eef2ff);
+      border-radius: 24px;
+      box-shadow: var(--shadow-soft);
       display: flex;
       flex-direction: column;
-      height: 100vh;
-      color: var(--text-main);
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.25);
     }
-
-    header {
-      padding: 10px 15px;
-      background: var(--green-dark);
-      color: #fff;
+    header.app-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      padding: 16px 22px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+      background: linear-gradient(120deg, #0f766e, #16a34a);
+      color: white;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-logo {
+      width: 34px; height: 34px; border-radius: 12px;
+      background: radial-gradient(circle at 30% 20%, #bbf7d0, #22c55e);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 18px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+    }
+    .brand-text h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.02em; }
+    .brand-text p { font-size: 12px; opacity: 0.85; }
+    .header-badge {
+      font-size: 12px; padding: 6px 12px; border-radius: 999px;
+      background: rgba(15, 23, 42, 0.2);
+      border: 1px solid rgba(226, 232, 240, 0.6);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .header-badge span.led {
+      width: 8px; height: 8px; border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.35);
+    }
+    main.app-main {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      min-height: 520px;
+    }
+    @media (max-width: 960px) {
+      main.app-main { grid-template-columns: 1fr; }
+      .project-panel { border-left: none; border-top: 1px solid var(--border); }
+    }
+    .chat-section {
+      display: flex; flex-direction: column;
+      padding: 16px;
+      background: radial-gradient(circle at top, #e5f9f3, #eef2ff);
+    }
+    .chat-header-line {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px;
+    }
+    .chat-title {
+      font-size: 14px; font-weight: 600;
+      display: flex; gap: 8px; align-items: center; color: #0f172a;
+    }
+    .chat-title span.dot {
+      width: 8px; height: 8px; border-radius: 999px; background: #22c55e;
+    }
+    .chat-sub { font-size: 12px; color: var(--text-soft); }
+    .chat-window {
+      flex: 1;
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      box-shadow: var(--shadow-light);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 580px;
+    }
+    .messages { flex: 1; overflow-y: auto; padding-right: 4px; scroll-behavior: smooth; }
+    .message { max-width: 90%; margin-bottom: 8px; display: flex; gap: 8px; }
+    .message.assistant { justify-content: flex-start; }
+    .message.user { justify-content: flex-end; }
+    .bubble {
+      padding: 8px 11px;
+      border-radius: 14px;
+      font-size: 13px;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .assistant .bubble {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-bottom-left-radius: 4px;
+      color: #0f172a;
+    }
+    .user .bubble {
+      background: #16a34a;
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .thinking {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--text-soft);
+      padding: 4px 8px; border-radius: 999px;
+      background: #e5f3ff; margin-top: 2px;
+    }
+    .thinking-dot {
+      width: 6px; height: 6px; border-radius: 999px;
+      background: #38bdf8;
+      animation: pulse 1.2s infinite ease-in-out;
+    }
+    .thinking-dot:nth-child(2) { animation-delay: 0.15s; }
+    .thinking-dot:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes pulse {
+      0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+      40% { transform: scale(1.1); opacity: 1; }
+    }
+    .chat-input {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 8px; padding-top: 8px;
+      border-top: 1px solid rgba(148, 163, 184, 0.3);
+    }
+    .chat-input input[type="text"] {
+      flex: 1; padding: 9px 10px; border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      font-size: 13px; outline: none; background: #f9fafb;
+    }
+    .chat-input input[type="text"]:focus {
+      border-color: #16a34a;
+      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.25);
+      background: #ffffff;
+    }
+    .chat-input button {
+      border: none; padding: 9px 14px; border-radius: 999px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+      color: white; display: inline-flex; align-items: center; gap: 6px;
+      box-shadow: 0 10px 18px rgba(22, 163, 74, 0.35);
+    }
+    .chat-input button:disabled {
+      opacity: 0.6; cursor: not-allowed; box-shadow: none;
+    }
+    .project-panel {
+      padding: 14px 16px;
+      background: #f8fafc;
+      border-left: 1px solid rgba(148, 163, 184, 0.35);
+      display: flex;
+      flex-direction: column;
       gap: 10px;
     }
-
-    .brand {
+    .panel-header {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 18px;
-      font-weight: bold;
+      justify-content: space-between;
+      margin-bottom: 6px;
     }
-
-    .brand span.logo {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      border: 2px solid #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-    }
-
-    .user-info {
-      font-size: 12px;
-      text-align: right;
-      opacity: 0.9;
-    }
-
-    #chat-container {
-      flex: 1;
-      overflow-y: auto;
-      padding: 15px;
-    }
-
-    .msg {
-      max-width: 80%;
-      margin-bottom: 12px;
-      padding: 10px 13px;
-      border-radius: 12px;
-      line-height: 1.4;
-      white-space: pre-wrap;
-      font-size: 14px;
-    }
-
-    .user-msg {
-      background: #dcedc8;
-      margin-left: auto;
-      border-bottom-right-radius: 2px;
-    }
-
-    .bot-msg {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-bottom-left-radius: 2px;
-    }
-
-    .msg small {
-      display: block;
-      margin-top: 4px;
-      font-size: 11px;
-      color: var(--text-sub);
-    }
-
-    #thinking-container {
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0 10px;
-    }
-
-    #thinking {
-  display: none;
-  font-size: 13px;
-  color: var(--text-sub);
-  font-style: italic;
-  align-items: center;
-  gap: 4px;
-}
-
-
-    #thinking span.label {
-      white-space: nowrap;
-    }
-
-    .dot {
-      width: 4px;
-      height: 4px;
-      border-radius: 50%;
-      background: var(--text-sub);
-      animation: blink 1.3s infinite ease-in-out;
-    }
-
-    .dot:nth-child(2) {
-      animation-delay: 0.15s;
-    }
-
-    .dot:nth-child(3) {
-      animation-delay: 0.3s;
-    }
-
-    @keyframes blink {
-      0%, 20% { opacity: 0.2; transform: translateY(0); }
-      40% { opacity: 1; transform: translateY(-1px); }
-      60% { opacity: 0.6; transform: translateY(0); }
-      100% { opacity: 0.2; transform: translateY(0); }
-    }
-
-    #input-area {
-      display: flex;
-      padding: 10px;
-      background: var(--green-light);
-      border-top: 1px solid var(--border);
-      gap: 8px;
-      align-items: center;
-    }
-
-    #messageInput {
-      flex: 1;
-      padding: 9px 10px;
-      border: 1px solid #aaa;
-      border-radius: 6px;
-      font-size: 14px;
-      resize: none;
-      max-height: 120px;
-      min-height: 36px;
-    }
-
-    #sendBtn {
-      padding: 10px 15px;
-      background: var(--green-dark);
-      color: #fff;
-      font-size: 14px;
+    .panel-header h2 { font-size: 14px; font-weight: 600; color: #0f172a; }
+    .panel-header button {
       border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    #sendBtn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    #logoutBtn {
-      font-size: 11px;
-      padding: 4px 8px;
-      background: rgba(255,255,255,0.12);
-      color: #fff;
+      background: rgba(15, 118, 110, 0.06);
+      color: #0369a1;
       border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.3);
+      padding: 4px 10px;
+      font-size: 11px;
       cursor: pointer;
+      border: 1px solid rgba(148, 163, 184, 0.4);
     }
+    .panel-section {
+      background: white;
+      border-radius: 14px;
+      padding: 8px 10px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+      margin-bottom: 6px;
+    }
+    .panel-section h3 { font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #0f172a; }
+    .panel-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 8px;
+      font-size: 11px;
+    }
+    .panel-label { color: var(--text-soft); }
+    .panel-value { font-weight: 600; color: #111827; }
+    .pill {
+      display: inline-flex;
+      padding: 3px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      margin: 2px 2px 0 0;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      background: #f1f5f9;
+    }
+    .maliyet { font-size: 20px; font-weight: 700; color: #0f766e; }
+    .maliyet-sub { font-size: 11px; color: var(--text-soft); }
+    .panel-note { font-size: 11px; color: var(--text-soft); margin-top: 4px; }
 
-    @media (max-width: 600px) {
-      .msg {
-        max-width: 100%;
-      }
-      header {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      .user-info {
-        text-align: left;
-      }
+    .wizard-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+    .wizard-container {
+      width: 100%;
+      max-width: 660px;
+      background: #f9fafb;
+      border-radius: 22px;
+      padding: 18px 20px 16px;
+      box-shadow: 0 24px 55px rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(148, 163, 184, 0.6);
+    }
+    .wizard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+    .wizard-header-left h2 { font-size: 18px; margin-bottom: 4px; color: #0f172a; }
+    .wizard-header-left p { font-size: 12px; color: var(--text-soft); }
+    .wizard-step-badges {
+      font-size: 11px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: #e5f3ff;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      height: fit-content;
+    }
+    .wizard-body {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    @media (max-width: 768px) {
+      .wizard-body { grid-template-columns: 1fr; }
+    }
+    .wizard-form-group { margin-bottom: 8px; }
+    .wizard-form-group label {
+      font-size: 12px; font-weight: 600;
+      display: block; margin-bottom: 4px; color: #111827;
+    }
+    .wizard-sub { font-size: 11px; color: var(--text-soft); margin-bottom: 4px; }
+    .wizard-input {
+      width: 100%; padding: 6px 8px; border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      font-size: 12px; outline: none; background: #f9fafb;
+    }
+    .wizard-range-row { display: flex; align-items: center; gap: 8px; }
+    .wizard-range-row input[type="range"] { flex: 1; }
+    .wizard-range-value {
+      font-size: 12px; font-weight: 600;
+      padding: 4px 8px; border-radius: 999px;
+      background: #e5f3ff; border: 1px solid rgba(59, 130, 246, 0.4);
+    }
+    .wizard-options {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px;
+    }
+    .wizard-option {
+      flex: 1 1 calc(50% - 6px);
+      min-width: 90px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      padding: 6px 7px;
+      font-size: 11px;
+      cursor: pointer;
+      background: #f8fafc;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .wizard-option span.label { font-weight: 500; }
+    .wizard-option span.tag { font-size: 10px; color: var(--text-soft); }
+    .wizard-option.active {
+      background: #dcfce7;
+      border-color: #16a34a;
+      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.35);
+    }
+    .wizard-mini-summary {
+      font-size: 11px;
+      background: white;
+      border-radius: 14px;
+      padding: 8px 10px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+    }
+    .wizard-mini-summary h3 { font-size: 11px; font-weight: 600; margin-bottom: 4px; }
+    .wizard-mini-summary ul { list-style: none; }
+    .wizard-mini-summary li { margin-bottom: 3px; }
+    .pill-green {
+      display: inline-flex;
+      padding: 3px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      background: #dcfce7;
+      border: 1px solid rgba(34, 197, 94, 0.6);
+      color: #166534;
+      margin-right: 2px;
+    }
+    .wizard-footer {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-top: 4px;
+      font-size: 11px; color: var(--text-soft);
+    }
+    .wizard-footer-right { display: flex; gap: 6px; }
+    .btn-text {
+      border: none; background: transparent;
+      font-size: 11px; color: var(--text-soft);
+      cursor: pointer; text-decoration: underline;
+    }
+    .btn-primary {
+      border: none;
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+      color: white;
+      font-size: 13px; font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+      box-shadow: 0 14px 24px rgba(22, 163, 74, 0.4);
+    }
+    .btn-primary:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      box-shadow: none;
     }
   </style>
 </head>
 <body>
 
-<header>
-  <div class="brand">
-    <span class="logo">💧</span>
-    <span>Sulama Asistanı</span>
+  <!-- Wizard -->
+  <div class="wizard-overlay" id="wizardOverlay">
+    <div class="wizard-container">
+      <div class="wizard-header">
+        <div class="wizard-header-left">
+          <h2>Bahçen için hızlı bir proje tasarlayalım</h2>
+          <p>Önce birkaç kısa soru soracağım, sonra Sulama Asistanı detaylı tasarım, malzeme listesi ve maliyet hesabını çıkaracak.</p>
+        </div>
+        <div class="wizard-step-badges">1/1 Proje Özeti</div>
+      </div>
+
+      <div class="wizard-body">
+        <form id="wizardForm">
+          <div class="wizard-form-group">
+            <label for="areaRange">Alan (m²)</label>
+            <p class="wizard-sub">Tahmini alanı girmen yeterli, sonra sohbet içinde revize edebiliriz.</p>
+            <div class="wizard-range-row">
+              <input type="range" id="areaRange" min="50" max="2000" step="10" value="200" />
+              <div class="wizard-range-value"><span id="areaValue">200</span> m²</div>
+            </div>
+          </div>
+
+          <div class="wizard-form-group">
+            <label>Bahçe şekli</label>
+            <div class="wizard-options" data-field="shape">
+              <div class="wizard-option active" data-value="dikdortgen">
+                <span class="label">Dikdörtgen</span><span class="tag">En yaygın</span>
+              </div>
+              <div class="wizard-option" data-value="L">
+                <span class="label">L şekilli</span><span class="tag">Köşe bahçe</span>
+              </div>
+              <div class="wizard-option" data-value="kare">
+                <span class="label">Kare</span><span class="tag">Basit plan</span>
+              </div>
+              <div class="wizard-option" data-value="serbest">
+                <span class="label">Serbest</span><span class="tag">Düzensiz</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="wizard-form-group">
+            <label>Su kaynağı</label>
+            <div class="wizard-options" data-field="waterSource">
+              <div class="wizard-option active" data-value="sebekesu">
+                <span class="label">Şebeke suyu</span><span class="tag">Ev su hattı</span>
+              </div>
+              <div class="wizard-option" data-value="kuyu">
+                <span class="label">Kuyu</span><span class="tag">Dalgıç pompa</span>
+              </div>
+              <div class="wizard-option" data-value="depo">
+                <span class="label">Depo + hidrofor</span><span class="tag">Basınç kontrollü</span>
+              </div>
+              <div class="wizard-option" data-value="sondaj">
+                <span class="label">Sondaj</span><span class="tag">Yüksek debi</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="wizard-form-group">
+            <label>Basınç bilgisi</label>
+            <p class="wizard-sub">Bilmiyorsan sorun değil, Asistan Türkiye ortalamasına göre varsayılan değerle hesaplar.</p>
+            <div class="wizard-options" data-field="pressureKnown">
+              <div class="wizard-option active" data-value="hayir">
+                <span class="label">Bilmiyorum</span><span class="tag">Önerilen</span>
+              </div>
+              <div class="wizard-option" data-value="evet">
+                <span class="label">Biliyorum</span><span class="tag">bar cinsinden</span>
+              </div>
+            </div>
+            <input class="wizard-input" type="number" step="0.1" min="0.5" max="8"
+                   id="pressureInput" placeholder="Örn: 3.0 bar"
+                   style="margin-top:6px; display:none;" />
+          </div>
+
+          <div class="wizard-form-group">
+            <label>Sistem tipi</label>
+            <div class="wizard-options" data-field="systemType">
+              <div class="wizard-option active" data-value="sprink">
+                <span class="label">Sprink</span><span class="tag">Klasik çim</span>
+              </div>
+              <div class="wizard-option" data-value="rotor">
+                <span class="label">Rotor</span><span class="tag">Geniş alan</span>
+              </div>
+              <div class="wizard-option" data-value="damla">
+                <span class="label">Damla</span><span class="tag">Ağaç / çalı</span>
+              </div>
+              <div class="wizard-option" data-value="karisik">
+                <span class="label">Karışık</span><span class="tag">Sprink + damla</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="wizard-form-group">
+            <label>Otomasyon</label>
+            <div class="wizard-options" data-field="automation">
+              <div class="wizard-option active" data-value="evet">
+                <span class="label">Tam otomatik</span><span class="tag">Programlanabilir cihaz</span>
+              </div>
+              <div class="wizard-option" data-value="hayir">
+                <span class="label">Yarı otomatik / manuel</span><span class="tag">Musluk kontrollü</span>
+              </div>
+            </div>
+          </div>
+        </form>
+
+        <div class="wizard-mini-summary" id="wizardSummary">
+          <h3>Özet</h3>
+          <ul>
+            <li><span class="pill-green" id="summaryArea">200 m² alan</span></li>
+            <li><span class="pill-green" id="summaryShape">Dikdörtgen bahçe</span></li>
+            <li><span class="pill-green" id="summaryWaterSource">Şebeke suyu</span></li>
+            <li><span class="pill-green" id="summarySystemType">Sprink sistem</span></li>
+            <li><span class="pill-green" id="summaryAutomation">Tam otomatik</span></li>
+          </ul>
+          <p style="margin-top:6px;">Bu bilgilerle Sulama Asistanı:</p>
+          <ul style="margin-top:4px; padding-left:14px;">
+            <li>Zone sayısını ve boru çaplarını hesaplayacak,</li>
+            <li>Sprink / damla / rotor adetlerini çıkaracak,</li>
+            <li>Tahmini malzeme listesi ve maliyet verecek.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="wizard-footer">
+        <div>İlk etapta tahmini değerler yeterli. Sohbet sırasında bahçeye özel detayları netleştirebiliriz.</div>
+        <div class="wizard-footer-right">
+          <button type="button" class="btn-text" id="skipWizardBtn">Formu atla</button>
+          <button type="button" class="btn-primary" id="startChatBtn">Projeyi başlat ⮕</button>
+        </div>
+      </div>
+    </div>
   </div>
-  <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
-    <div class="user-info" id="userInfo">Giriş yapılıyor...</div>
-    <button id="logoutBtn">Çıkış yap</button>
+
+  <!-- Uygulama -->
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-logo">💧</div>
+        <div class="brand-text">
+          <h1>Sulama Asistanı</h1>
+          <p>Villa & peyzaj bahçeleri için akıllı sulama mühendisi</p>
+        </div>
+      </div>
+      <div class="header-badge">
+        <span class="led"></span>
+        <span>Türkiye koşullarına göre hesaplama aktif</span>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <section class="chat-section">
+        <div class="chat-header-line">
+          <div>
+            <div class="chat-title">
+              <span class="dot"></span><span>Proje Sohbeti</span>
+            </div>
+            <div class="chat-sub">Bahçen hakkında soru sorabilir, çıktıları revize ettirebilirsin.</div>
+          </div>
+        </div>
+
+        <div class="chat-window">
+          <div class="messages" id="messages"></div>
+
+          <div id="thinkingIndicator" style="display:none; margin-bottom:6px;">
+            <div class="thinking">
+              <span>Sulama Asistanı düşünüyor</span>
+              <span class="thinking-dot"></span>
+              <span class="thinking-dot"></span>
+              <span class="thinking-dot"></span>
+            </div>
+          </div>
+
+          <form id="chatForm" class="chat-input">
+            <input type="text" id="userInput"
+                   placeholder="Örn: 200 m² L bahçem var, zone ve malzeme hesabını detaylı çıkarır mısın?"
+                   autocomplete="off" />
+            <button type="submit" id="sendBtn">Gönder ⮞</button>
+          </form>
+        </div>
+      </section>
+
+      <aside class="project-panel">
+        <div class="panel-header">
+          <h2>Proje Özeti</h2>
+          <button type="button" id="editWizardBtn">Bilgileri güncelle</button>
+        </div>
+
+        <div class="panel-section">
+          <h3>Temel Bilgiler</h3>
+          <div class="panel-grid">
+            <div class="panel-label">Alan</div><div class="panel-value" id="panelArea">–</div>
+            <div class="panel-label">Şekil</div><div class="panel-value" id="panelShape">–</div>
+            <div class="panel-label">Su kaynağı</div><div class="panel-value" id="panelWaterSource">–</div>
+            <div class="panel-label">Basınç</div><div class="panel-value" id="panelPressure">Varsayılan</div>
+            <div class="panel-label">Sistem tipi</div><div class="panel-value" id="panelSystemType">–</div>
+            <div class="panel-label">Otomasyon</div><div class="panel-value" id="panelAutomation">–</div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <h3>Tasarım & Zone Bilgisi (AI)</h3>
+          <div class="panel-grid">
+            <div class="panel-label">Tahmini zone</div><div class="panel-value" id="panelZones">–</div>
+            <div class="panel-label">Ana boru çapı</div><div class="panel-value" id="panelMainPipe">–</div>
+            <div class="panel-label">Lateral çap</div><div class="panel-value" id="panelLateralPipe">–</div>
+            <div class="panel-label">Sprink / rotor adedi</div><div class="panel-value" id="panelSprinkCount">–</div>
+            <div class="panel-label">Damla hat uzunluğu</div><div class="panel-value" id="panelDripLength">–</div>
+            <div class="panel-label">Vana kutusu sayısı</div><div class="panel-value" id="panelValveBoxes">–</div>
+          </div>
+          <p class="panel-note">Şu an başlangıç varsayımlarını gösteriyor; AI teklif cevabına göre otomatik güncellenecek.</p>
+        </div>
+
+        <div class="panel-section">
+          <h3>Maliyet Özeti (AI tahmin)</h3>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+            <div>
+              <div class="maliyet" id="panelTotalCost">–</div>
+              <div class="maliyet-sub" id="panelCostNote">Malzeme + işçilik tahmini</div>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+              <span class="pill">Detaylı listeyi chat cevabında göreceksin</span>
+              <button type="button" id="downloadOfferBtn"
+                      style="display:none; padding:6px 10px; border-radius:999px; border:1px solid rgba(148,163,184,0.7); background:#0f766e; color:#fff; font-size:11px; cursor:pointer;">
+                Teklif formunu indir (PDF)
+              </button>
+            </div>
+          </div>
+          <p class="panel-note">Bu rakam, AI teklif listesinden otomatik hesaplanır; istersen PDF olarak indirebilirsin.</p>
+        </div>
+      </aside>
+    </main>
   </div>
-</header>
 
-<div id="chat-container"></div>
-
-<div id="thinking-container">
-  <div id="thinking">
-    <span class="label">Sulama Asistanı düşünüyor</span>
-    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-  </div>
-</div>
-
-<div id="input-area">
-  <textarea id="messageInput" placeholder="Bahçeni anlat, gerisini Sulama Asistanı halletsin..." rows="1"></textarea>
-  <button id="sendBtn">Gönder</button>
-</div>
-
-<script>
-  let loggedUser = null;
-
-  const chatContainer = document.getElementById("chat-container");
-  const input = document.getElementById("messageInput");
-  const sendBtn = document.getElementById("sendBtn");
-  const thinking = document.getElementById("thinking");
-  const userInfo = document.getElementById("userInfo");
-  const logoutBtn = document.getElementById("logoutBtn");
-
-  // Sayfa yüklenince kullanıcıyı localStorage'dan al
-  window.onload = () => {
-    const saved = localStorage.getItem("sulamaUser");
-    if (saved) {
-      loggedUser = JSON.parse(saved);
-      userInfo.textContent =
-        loggedUser.email +
-        " • Kalan soru: " +
-        (loggedUser.remaining ?? (loggedUser.limit - loggedUser.used));
-    } else {
-      alert("Önce giriş yapmalısınız.");
-      window.location.href = "/login.html";
-    }
+  <script>
+  // ======== Proje durumu =========
+  const projectState = {
+    area: 200,
+    shape: "dikdortgen",
+    waterSource: "sebekesu",
+    pressureKnown: false,
+    pressure: null,
+    systemType: "sprink",
+    automation: "evet",
+    zones: null,
+    mainPipe: null,
+    lateralPipe: null,
+    sprinkCount: null,
+    dripLength: null,
+    valveBoxes: null,
+    totalCost: null,
+    totalCostNote: "Malzeme + işçilik tahmini"
   };
 
-  logoutBtn.addEventListener("click", () => {
-    localStorage.removeItem("sulamaUser");
-    window.location.href = "/login.html";
-  });
+  // Son teklif metni ve teklif isteği regex'i
+  let lastOfferText = "";
+  const OFFER_LIST_REGEX =
+    /(malzeme listesi|tam malzeme|ürün ürü[nm]|urun urun|liste olarak|liste halinde|kalem kalem|teklif formu|teklif çıkar|teklif cikar|fiyatlandır|fiyatlandir|fiyatlı liste|kac metre|kaç metre|kac adet|kaç adet|net yaz|net liste)/i;
 
-  // Mesajı chat ekranına ekle
-  function addMessage(text, sender) {
-    const div = document.createElement("div");
-    div.className = "msg " + (sender === "user" ? "user-msg" : "bot-msg");
-    div.textContent = text;
-    chatContainer.appendChild(div);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-  }
+  // DOM referansları
+  const wizardOverlay = document.getElementById("wizardOverlay");
+  const areaRange = document.getElementById("areaRange");
+  const areaValue = document.getElementById("areaValue");
+  const summaryArea = document.getElementById("summaryArea");
+  const summaryShape = document.getElementById("summaryShape");
+  const summaryWaterSource = document.getElementById("summaryWaterSource");
+  const summarySystemType = document.getElementById("summarySystemType");
+  const summaryAutomation = document.getElementById("summaryAutomation");
+  const pressureInput = document.getElementById("pressureInput");
+  const startChatBtn = document.getElementById("startChatBtn");
+  const skipWizardBtn = document.getElementById("skipWizardBtn");
+  const editWizardBtn = document.getElementById("editWizardBtn");
 
-  // Streaming esnasında tek bot balonunu güncelle
-  let streamingDiv = null;
-  function updateStreamingMessage(text) {
-    if (!streamingDiv) {
-      streamingDiv = document.createElement("div");
-      streamingDiv.className = "msg bot-msg";
-      chatContainer.appendChild(streamingDiv);
+  const panelArea = document.getElementById("panelArea");
+  const panelShape = document.getElementById("panelShape");
+  const panelWaterSource = document.getElementById("panelWaterSource");
+  const panelPressure = document.getElementById("panelPressure");
+  const panelSystemType = document.getElementById("panelSystemType");
+  const panelAutomation = document.getElementById("panelAutomation");
+  const panelZones = document.getElementById("panelZones");
+  const panelMainPipe = document.getElementById("panelMainPipe");
+  const panelLateralPipe = document.getElementById("panelLateralPipe");
+  const panelSprinkCount = document.getElementById("panelSprinkCount");
+  const panelDripLength = document.getElementById("panelDripLength");
+  const panelValveBoxes = document.getElementById("panelValveBoxes");
+  const panelTotalCost = document.getElementById("panelTotalCost");
+  const panelCostNote = document.getElementById("panelCostNote");
+  const downloadOfferBtn = document.getElementById("downloadOfferBtn");
+
+  const messagesDiv = document.getElementById("messages");
+  const chatForm = document.getElementById("chatForm");
+  const userInput = document.getElementById("userInput");
+  const sendBtn = document.getElementById("sendBtn");
+  const thinkingIndicator = document.getElementById("thinkingIndicator");
+
+  // ========= Yardımcılar =========
+  function updateProjectPanel() {
+    panelArea.textContent = projectState.area ? projectState.area + " m²" : "–";
+    const shapeMap = { dikdortgen: "Dikdörtgen", L: "L şekilli", kare: "Kare", serbest: "Serbest" };
+    panelShape.textContent = shapeMap[projectState.shape] || "–";
+    const waterMap = { sebekesu: "Şebeke suyu", kuyu: "Kuyu", depo: "Depo + hidrofor", sondaj: "Sondaj" };
+    panelWaterSource.textContent = waterMap[projectState.waterSource] || "–";
+
+    if (projectState.pressureKnown && projectState.pressure) {
+      panelPressure.textContent = projectState.pressure.toFixed(1) + " bar";
+    } else {
+      panelPressure.textContent = "Varsayılan (≈3 bar)";
     }
-    streamingDiv.textContent = text;
-    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    const sysMap = { sprink: "Sprink", rotor: "Rotor", damla: "Damla", karisik: "Karışık" };
+    panelSystemType.textContent = sysMap[projectState.systemType] || "–";
+    panelAutomation.textContent = projectState.automation === "evet" ? "Tam otomatik" : "Yarı otomatik / manuel";
+
+    panelZones.textContent = projectState.zones != null ? projectState.zones : "–";
+    panelMainPipe.textContent = projectState.mainPipe || "–";
+    panelLateralPipe.textContent = projectState.lateralPipe || "–";
+    panelSprinkCount.textContent = projectState.sprinkCount != null ? projectState.sprinkCount : "–";
+    panelDripLength.textContent = projectState.dripLength || "–";
+    panelValveBoxes.textContent = projectState.valveBoxes != null ? projectState.valveBoxes : "–";
+
+    if (projectState.totalCost != null) {
+      panelTotalCost.textContent = projectState.totalCost.toLocaleString("tr-TR") + " TL";
+    } else {
+      panelTotalCost.textContent = "–";
+    }
+    panelCostNote.textContent = projectState.totalCostNote || "Malzeme + işçilik tahmini";
   }
 
-  // Textarea otomatik yükseklik
-  input.addEventListener("input", () => {
-    input.style.height = "auto";
-    input.style.height = Math.min(input.scrollHeight, 120) + "px";
+  function parseNumberTR(str) {
+    if (!str) return null;
+    const clean = str.replace(/\./g, "").replace(/\s/g, "");
+    const n = parseInt(clean, 10);
+    return isNaN(n) ? null : n;
+  }
+
+  // Teklif cevabından panel için bilgi çek
+  function analyzeOfferText(text) {
+    if (!text) return;
+
+    // Toplam yaklaşık fiyat
+    let m = text.match(/Toplam yaklaşık:\s*([\d\.]+)\s*[–-]\s*([\d\.]+)\s*TL/i);
+    if (m) {
+      const n1 = parseNumberTR(m[1]);
+      const n2 = parseNumberTR(m[2]);
+      if (n1 && n2) {
+        projectState.totalCost = Math.round((n1 + n2) / 2);
+        projectState.totalCostNote =
+          `Malzeme için yaklaşık ${n1.toLocaleString("tr-TR")}–${n2.toLocaleString(
+            "tr-TR"
+          )} TL (işçilik hariç).`;
+      }
+    } else {
+      m = text.match(/Toplam yaklaşık:\s*([\d\.]+)\s*TL/i);
+      if (m) {
+        const n = parseNumberTR(m[1]);
+        if (n) {
+          projectState.totalCost = n;
+          projectState.totalCostNote = "Malzeme için yaklaşık toplam (işçilik hariç).";
+        }
+      }
+    }
+
+    // Zone sayısı
+    const zoneMatch = text.match(/(\d+)\s*zone[’'lu]*/i);
+    if (zoneMatch) projectState.zones = parseInt(zoneMatch[1], 10);
+
+    // Rotor / sprink adedi
+    let rotorMatch = text.match(/(\d+)\s*adet\s+[^.\n]*rotor/i);
+    if (!rotorMatch) rotorMatch = text.match(/(\d+)\s*x\s+[^.\n]*rotor/i);
+    if (!rotorMatch) rotorMatch = text.match(/toplam\s+(\d+)\s+adet\s+rotor/i);
+    if (rotorMatch) projectState.sprinkCount = parseInt(rotorMatch[1], 10);
+
+    // Ana hat boru
+    const mainMatch = text.match(/(\d+)\s*m\s+PE\s*1?00?\s*(\d+)\s*mm[^.\n]*ana/i);
+    if (mainMatch) projectState.mainPipe = `${mainMatch[1]} m PE ${mainMatch[2]} mm`;
+
+    // Lateral boru
+    const latMatch = text.match(/(\d+)\s*m\s+PE\s*1?00?\s*(\d+)\s*mm[^.\n]*(lateral|yan hat|zone içi)/i);
+    if (latMatch) projectState.lateralPipe = `${latMatch[1]} m PE ${latMatch[2]} mm`;
+
+    // Vana kutusu
+    const valveMatch = text.match(/(\d+)\s*adet[^.\n]*vana kutusu/i);
+    if (valveMatch) projectState.valveBoxes = parseInt(valveMatch[1], 10);
+
+    // Basit defaultlar
+    if (!projectState.mainPipe) {
+      projectState.mainPipe = "≈ PE 32 mm ana hat (önerilen)";
+    }
+    if (!projectState.lateralPipe) {
+      projectState.lateralPipe = "≈ PE 20 mm lateral (önerilen)";
+    }
+    if (projectState.sprinkCount == null && projectState.systemType === "rotor" && projectState.area) {
+      projectState.sprinkCount = Math.max(4, Math.round(projectState.area / 18));
+    }
+
+    updateProjectPanel();
+  }
+
+  // Teklif metnini maddelere bölen yardımcı
+  function splitOfferText(text) {
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+    const items = [];
+    let totalLine = null;
+    const otherLines = [];
+
+    for (const line of lines) {
+      if (/Toplam yaklaşık/i.test(line)) {
+        totalLine = line;
+        continue;
+      }
+      if (/^\d+\)/.test(line)) {
+        items.push(line);
+      } else {
+        otherLines.push(line);
+      }
+    }
+    return { items, totalLine, otherLines };
+  }
+
+  // PDF üret
+  // Teklif metnini maddelere bölen yardımcı (zaten ekli değilse yukarıdaki splitOfferText duruyor)
+function generateOfferPdf() {
+  if (!lastOfferText) {
+    alert("Önce bir teklif listesi oluşturmalısın.");
+    return;
+  }
+
+  const jspdf = window.jspdf;
+  if (!jspdf || !jspdf.jsPDF) {
+    alert("PDF modülü yüklenemedi (jsPDF).");
+    return;
+  }
+  const { jsPDF } = jspdf;
+  const doc = new jsPDF("p", "mm", "a4");
+
+  // Roboto fontu kullan
+try {
+  doc.setFont("Roboto", "normal");
+} catch (e) {
+  // Font adı farklıysa converter dosyasındaki addFont satırına bak
+  console.warn("Roboto font set edilemedi, default font kullanılıyor:", e);
+}
+
+
+  if (typeof doc.autoTable !== "function") {
+    alert("Tablo modülü yüklenemedi (autoTable).");
+    return;
+  }
+
+  const { items, totalLine } = splitOfferText(lastOfferText);
+
+  let y = 15;
+
+  // ===== Başlık =====
+  doc.setFontSize(15);
+  doc.text("ToptanSulama.com - Sulama Proje ve Malzeme Teklifi", 12, y);
+  y += 8;
+
+  // Firma & tarih
+  doc.setFontSize(10);
+  const today = new Date();
+  const dateStr = today.toLocaleDateString("tr-TR");
+  doc.text("Firma: ToptanSulama.com", 12, y);
+  doc.text("Tarih: " + dateStr, 200 - 12, y, { align: "right" });
+  y += 6;
+
+  doc.setLineWidth(0.3);
+  doc.line(12, y, 200 - 12, y);
+  y += 6;
+
+  // ===== Proje bilgileri kutusu =====
+  doc.setFontSize(11);
+  doc.text("Proje Bilgileri", 12, y);
+  y += 5;
+  doc.setLineWidth(0.2);
+  doc.roundedRect(12, y, 200 - 24, 24, 2, 2);
+  y += 6;
+
+  const projLines = [
+    `Alan: ${projectState.area || "-"} m²`,
+    `Şekil: ${panelShape.textContent || "-"}`,
+    `Su kaynağı: ${panelWaterSource.textContent || "-"}`,
+    `Sistem tipi: ${panelSystemType.textContent || "-"}`,
+    `Otomasyon: ${panelAutomation.textContent || "-"}`
+  ];
+
+  doc.setFontSize(10);
+  let innerY = y;
+  projLines.forEach((line) => {
+    doc.text(line, 14, innerY);
+    innerY += 4.5;
+  });
+  y += 24 + 6;
+
+  // ===== Malzeme tablosu =====
+  doc.setFontSize(11);
+  doc.text("Malzeme Kalemleri", 12, y);
+  y += 4;
+  doc.setLineWidth(0.2);
+  doc.line(12, y, 200 - 12, y);
+  y += 2;
+
+  // Kalemleri tabloya hazırlama
+  const rows = items.map((raw, idx) => {
+    // "7) ..." başındaki numarayı at
+    let line = raw.replace(/^\d+\)\s*/, "").trim();
+
+    // Fiyat parçası
+    let priceText = "";
+    const priceMatch = line.match(/Yaklaşık fiyat\s*\(([^)]+)\)/i);
+    if (priceMatch) {
+      priceText = priceMatch[1].trim(); // "80 x 14 TL ≈ 1.120 TL"
+      line = line.replace(/[-–]\s*Yaklaşık fiyat\s*\([^)]+\)/i, "").trim();
+    }
+
+    // Tahmini adet (ilk "x" öncesi sayı veya "adet")
+    let adet = "";
+    let adetMatch = line.match(/(\d+)\s*x/i);
+    if (!adetMatch) adetMatch = line.match(/(\d+)\s*adet/i);
+    if (adetMatch) adet = adetMatch[1];
+
+    // Açıklama (ürün / iş içeriği)
+    const desc = line;
+
+    return [
+      String(idx + 1),    // #
+      desc,               // Açıklama
+      adet,               // Adet
+      priceText           // Yaklaşık fiyat
+    ];
   });
 
-  async function sendMessage() {
-    const text = input.value.trim();
-    if (!text || !loggedUser) return;
+  doc.autoTable({
+    head: [["#", "Ürün / Açıklama", "Adet", "Yaklaşık fiyat"]],
+    body: rows,
+    startY: y + 2,
+    styles: {
+  fontSize: 8.5,
+  cellPadding: 2,
+  valign: "top"
+},
+    headStyles: {
+      fillColor: [15, 118, 110],
+      textColor: 255,
+      halign: "center"
+    },
+    columnStyles: {
+  0: { cellWidth: 8, halign: "center" },   // # kolonu
+  1: { cellWidth: 110 },                   // Ürün / açıklama
+  2: { cellWidth: 16, halign: "center" },  // Adet
+  3: { cellWidth: 40, halign: "right" }    // Yaklaşık fiyat
+},
 
-    sendBtn.disabled = true;
+    theme: "grid",
+    alternateRowStyles: { fillColor: [245, 245, 245] }
+  });
 
-    // Kullanıcı mesajını ekle
-    addMessage(text, "user");
-    input.value = "";
-    input.style.height = "36px";
+  const tableY = doc.lastAutoTable.finalY || (y + 30);
+  let currY = tableY + 8;
 
-    // Düşünüyor animasyonunu aç
-    thinking.style.display = "inline-flex";
-    streamingDiv = null; // yeni cevap için reset
+  // ===== Toplam satırı =====
+  doc.setFontSize(11);
+  let totalText = "";
+  if (totalLine) {
+    totalText = totalLine.replace(/^Toplam yaklaşık:\s*/i, "");
+  } else if (projectState.totalCost != null) {
+    totalText = projectState.totalCost.toLocaleString("tr-TR") + " TL";
+  }
 
-    let response;
+  if (totalText) {
+    doc.setFontSize(11);
+    doc.text("Toplam yaklaşık:", 12, currY);
+    doc.setFontSize(12);
+    doc.text(totalText, 200 - 12, currY, { align: "right" });
+    currY += 8;
+  }
+
+  // ===== Notlar =====
+  const noteLines = [
+    "Not: Bu teklif yaklaşık değerler içerir; stok durumu, kur ve tedarikçilere göre değişebilir.",
+    "Not: İşçilik kalemleri belirtilmemişse sadece malzeme bedeli dikkate alınmalıdır.",
+    "Bu PDF, Sulama Asistanı tarafından otomatik oluşturulmuştur."
+  ];
+  doc.setFontSize(9);
+  noteLines.forEach((line) => {
+    if (currY > 280) {
+      doc.addPage();
+      currY = 15;
+    }
+    const split = doc.splitTextToSize(line, 200 - 24);
+    split.forEach((l) => {
+      doc.text(l, 12, currY);
+      currY += 4;
+    });
+  });
+
+  doc.save("sulama-teklifi.pdf");
+}
+
+
+  function updateWizardSummary() {
+    summaryArea.textContent = projectState.area + " m² alan";
+    const shapeTextMap = {
+      dikdortgen: "Dikdörtgen bahçe",
+      L: "L şekilli bahçe",
+      kare: "Kare bahçe",
+      serbest: "Serbest form"
+    };
+    summaryShape.textContent = shapeTextMap[projectState.shape] || "Bahçe şekli";
+    const waterTextMap = {
+      sebekesu: "Şebeke suyu",
+      kuyu: "Kuyu",
+      depo: "Depo + hidrofor",
+      sondaj: "Sondaj"
+    };
+    summaryWaterSource.textContent = waterTextMap[projectState.waterSource] || "Su kaynağı";
+    const sysTextMap = {
+      sprink: "Sprink sistem",
+      rotor: "Rotor sistem",
+      damla: "Damla sulama",
+      karisik: "Karışık sistem"
+    };
+    summarySystemType.textContent = sysTextMap[projectState.systemType] || "Sistem tipi";
+    summaryAutomation.textContent =
+      projectState.automation === "evet" ? "Tam otomatik" : "Yarı otomatik / manuel";
+  }
+
+  function renderBubbleText(bubble, text) {
+    const safe = (text || "").toString();
+    bubble.innerHTML = safe.replace(/\n/g, "<br>");
+  }
+
+  function addMessage(role, text) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "message " + role;
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    renderBubbleText(bubble, text);
+    wrapper.appendChild(bubble);
+    messagesDiv.appendChild(wrapper);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    return bubble;
+  }
+
+  function setThinking(isThinking) {
+    thinkingIndicator.style.display = isThinking ? "block" : "none";
+    userInput.disabled = isThinking;
+    sendBtn.disabled = isThinking;
+    if (!isThinking) userInput.focus();
+  }
+
+  function buildPromptFromProject(userText) {
+    const wantsList = OFFER_LIST_REGEX.test(userText);
+    const wantsDetailRegex =
+      /(detaylı anlat|detayli anlat|detaylı yaz|detayli yaz|uzun uzun|hidrolik hesap|basınç kaybı hesabı|basinc kaybi hesabi|hesap yap|hesabını çıkar|hesabini cikar|metraj çıkar|metraj cikar)/i;
+    const wantsDetail = !wantsList && wantsDetailRegex.test(userText);
+
+    let intro = "Bahçe için elimde şu ön bilgiler var:\n";
+    intro += " - Alan: " + (projectState.area ? projectState.area + " m²" : "bilinmiyor") + "\n";
+
+    const shapeMap = { dikdortgen: "dikdörtgen", L: "L şekilli", kare: "kare", serbest: "serbest form" };
+    intro += " - Şekil: " + (shapeMap[projectState.shape] || "belirtilmedi") + "\n";
+
+    const waterMap = { sebekesu: "şebeke suyu", kuyu: "kuyu", depo: "depo + hidrofor", sondaj: "sondaj" };
+    intro += " - Su kaynağı: " + (waterMap[projectState.waterSource] || "bilinmiyor") + "\n";
+
+    const sysMap = { sprink: "sprink", rotor: "rotor", damla: "damla", karisik: "karışık" };
+    intro += " - Sistem tipi: " + (sysMap[projectState.systemType] || "belirtilmedi") + "\n";
+
+    intro +=
+      " - Otomasyon: " +
+      (projectState.automation === "evet" ? "tam otomatik" : "yarı otomatik / manuel") +
+      "\n";
+
+    let hint = "";
+    if (wantsList) {
+      hint += "KURAL: Kullanıcı net MALZEME LİSTESİ ve TEKLİF istiyor.\n";
+      hint += "Girizgah, özet, 'istersen', 'bir sonraki adımda' gibi cümleler YASAK.\n";
+      hint += "Cevap formatın ŞÖYLE OLACAK:\n";
+      hint += "1) En fazla 1 cümlelik çok kısa özet.\n";
+      hint +=
+        "2) Hemen altında madde madde liste; her satırda: 'Adet x Ürün adı – kısa açıklama – Yaklaşık fiyat (X TL)'. En fazla 20 satır.\n";
+      hint +=
+        "3) Listenin en altında tek satırda: 'Toplam yaklaşık: X–Y TL (malzeme, işçilik hariç/dahil)'.\n";
+      hint += "Başka açıklama, soru, davet YAZMA.\n";
+    } else if (wantsDetail) {
+      hint += "KURAL: Kullanıcı detaylı TEKNİK açıklama istiyor.\n";
+      hint += "2–5 kısa paragraf kullan; her paragraf en fazla 3 cümle olsun.\n";
+      hint += "Zone planı, boru çapı, debi ve basınç hesabını adım adım ama roman yazmadan açıkla.\n";
+    } else {
+      hint += "KURAL: Bu mesaja EN FAZLA 3 cümleyle kısa cevap ver.\n";
+      hint += "Madde, başlık, tablo, uzun teknik açıklama, fiyat listesi YASAK.\n";
+      hint += "Gerekiyorsa sadece 1 tane netleştirici soru sor, sonra dur.\n";
+    }
+
+    return intro + "\n" + hint + "\nKULLANICI MESAJI:\n" + userText;
+  }
+
+  // ========= Wizard eventleri =========
+  areaRange.addEventListener("input", () => {
+    const val = parseInt(areaRange.value, 10);
+    projectState.area = val;
+    areaValue.textContent = val;
+    updateWizardSummary();
+  });
+
+  document.querySelectorAll(".wizard-options").forEach((group) => {
+    const field = group.getAttribute("data-field");
+    group.addEventListener("click", (e) => {
+      const option = e.target.closest(".wizard-option");
+      if (!option) return;
+      group.querySelectorAll(".wizard-option").forEach((o) => o.classList.remove("active"));
+      option.classList.add("active");
+      const value = option.getAttribute("data-value");
+      if (!value) return;
+
+      if (field === "shape") projectState.shape = value;
+      else if (field === "waterSource") projectState.waterSource = value;
+      else if (field === "pressureKnown") {
+        projectState.pressureKnown = value === "evet";
+        pressureInput.style.display = projectState.pressureKnown ? "block" : "none";
+        if (!projectState.pressureKnown) projectState.pressure = null;
+      } else if (field === "systemType") projectState.systemType = value;
+      else if (field === "automation") projectState.automation = value;
+
+      updateWizardSummary();
+    });
+  });
+
+  pressureInput.addEventListener("input", () => {
+    const val = parseFloat(pressureInput.value.replace(",", "."));
+    if (!isNaN(val)) projectState.pressure = val;
+  });
+
+  startChatBtn.addEventListener("click", () => {
+    wizardOverlay.style.display = "none";
+    updateProjectPanel();
+    addMessage(
+      "assistant",
+      "Bahçe bilgilerini aldım. Alan: " +
+        projectState.area +
+        " m², şekil: " +
+        ({ dikdortgen: "dikdörtgen", L: "L", kare: "kare", serbest: "serbest" }[projectState.shape] ||
+          "belirtilmemiş") +
+        ", su kaynağı: " +
+        ({ sebekesu: "şebeke suyu", kuyu: "kuyu", depo: "depo + hidrofor", sondaj: "sondaj" }[
+          projectState.waterSource
+        ] || "belirtilmemiş") +
+        ". Şimdi bu bilgilere göre zone planı, boru çapları ve malzeme listesini çıkarabiliriz. İstersen bahçenin özel durumlarını (ağaç, teras, eğim vb.) yaz."
+    );
+    userInput.focus();
+  });
+
+  skipWizardBtn.addEventListener("click", () => {
+    wizardOverlay.style.display = "none";
+    addMessage(
+      "assistant",
+      "Hoş geldin. Bahçe alanını, su kaynağını ve otomasyon isteğini yazdığında sana özel sulama projesi, malzeme listesi ve maliyet hesabı çıkaracağım."
+    );
+    updateProjectPanel();
+    userInput.focus();
+  });
+
+  editWizardBtn.addEventListener("click", () => {
+    wizardOverlay.style.display = "flex";
+  });
+
+  downloadOfferBtn.addEventListener("click", generateOfferPdf);
+
+  // ========= Chat (streaming) =========
+  chatForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = userInput.value.trim();
+    if (!text) return;
+
+    const isOfferRequest = OFFER_LIST_REGEX.test(text);
+
+    addMessage("user", text);
+    userInput.value = "";
+    setThinking(true);
+
+    const assistantBubble = addMessage("assistant", "");
+    const combinedMessage = buildPromptFromProject(text);
+    let assistantText = "";
+
     try {
-      response = await fetch("/chat", {
+      const response = await fetch("/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: text,
-          user: loggedUser,
-          mode: "normal",
-        }),
+          message: combinedMessage,
+          user: { email: "guest@sulamaasistani.local" }
+        })
       });
+
+      if (!response.ok || !response.body) {
+        throw new Error("Sunucudan geçersiz yanıt alındı: " + response.status);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        assistantText += chunk;
+        renderBubbleText(assistantBubble, assistantText);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
     } catch (err) {
-      addMessage("Sunucuya erişilemedi. Lütfen tekrar deneyin.", "bot");
-      thinking.style.display = "none";
-      sendBtn.disabled = false;
-      return;
-    }
+      console.error(err);
+      renderBubbleText(
+        assistantBubble,
+        "Bir hata oluştu: " + err.message + ". Lütfen daha sonra tekrar dener misin veya sistem yöneticine bildir."
+      );
+    } finally {
+      setThinking(false);
 
-    if (!response.ok) {
-      let errorText = "Sunucu hatası oluştu.";
-      try {
-        const data = await response.json();
-        if (data && data.error) errorText = data.error;
-      } catch (_) {}
-      addMessage(errorText, "bot");
-      thinking.style.display = "none";
-      sendBtn.disabled = false;
-      return;
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let botText = "";
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      botText += chunk;
-      updateStreamingMessage(botText);
-    }
-
-    // İşlem bitti
-    thinking.style.display = "none";
-    sendBtn.disabled = false;
-
-    // Kullanıcı limit güncelle
-    const remaining = response.headers.get("X-Remaining");
-    if (remaining !== null) {
-      loggedUser.used += 1;
-      loggedUser.remaining = Number(remaining);
-      localStorage.setItem("sulamaUser", JSON.stringify(loggedUser));
-      userInfo.textContent =
-        loggedUser.email + " • Kalan soru: " + loggedUser.remaining;
-    }
-  }
-
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
+      if (isOfferRequest && assistantText) {
+        lastOfferText = assistantText;
+        analyzeOfferText(assistantText);
+        downloadOfferBtn.style.display = "inline-flex";
+      }
     }
   });
 
-  sendBtn.addEventListener("click", sendMessage);
+  // Başlangıç
+  updateWizardSummary();
+  updateProjectPanel();
 </script>
 
 </body>

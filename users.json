@@ -210,5 +210,175 @@
         }
       }
     ]
+  },
+  {
+    "email": "guest@sulamaasistani.local",
+    "password": "",
+    "limit": 9999,
+    "used": 82,
+    "memory": [
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: şebeke suyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Bu mesaja EN FAZLA 3 cümleyle kısa cevap ver.\nMadde, başlık, tablo, uzun teknik açıklama, fiyat listesi YASAK.\nGerekiyorsa sadece 1 tane netleştirici soru sor, sonra dur.\n\nKULLANICI MESAJI:\ndetaylandır"
+      },
+      {
+        "role": "assistant",
+        "content": "Rotor yerleşimini şöyle düşünebilirsin: Dikdörtgen bahçenin dört köşesine 4 rotor, uzun kenarlar boyunca aralara karşılıklı gelecek şekilde 2’şer rotor daha koyup toplam 12 rotoru “kareleme” mantığıyla, atış yarıçapları birbirine değecek şekilde dizmelisin. Ağaçlar için sağ kenara paralel 1 hat, sol kenara paralel 1 hat 16 mm damla boru çekip her ağacın etrafına halka gibi dönerek ağaç başına 2–3 damlatıcı (veya entegre damla borudan 2–3 tur) vermelisin. Tam otomatik olması için de şebekeden gelen suyu önce 1\" filtreye, oradan 4’lü vana kolektörüne, oradan da ayrı ayrı 3 rotor zonu ve 1 damla zonuna dağıtıp kontrol ünitesini bu 4 vanaya bağlamalısın."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: şebeke suyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Bu mesaja EN FAZLA 3 cümleyle kısa cevap ver.\nMadde, başlık, tablo, uzun teknik açıklama, fiyat listesi YASAK.\nGerekiyorsa sadece 1 tane netleştirici soru sor, sonra dur.\n\nKULLANICI MESAJI:\nbağlayalım"
+      },
+      {
+        "role": "assistant",
+        "content": "Bağlantı sırası basitçe şöyle olmalı: Şebeke çıkışı → vana (veya küresel vana) → 1\" mini filtre → 1\" kolektör (4 adet 1\" solenoid vana bağlı) → her vanadan ayrı ayrı PE100 32 mm ana hat → zone başında PE100 20 mm lateral ve üzerindeki rotorlar / damla hatları. Kontrol ünitesinden gelen sinyal kablolarını da (ortak nötr + her vana için bir renk) bu 4 solenoid vanaya bağlayıp, üniteyi priz olan iç mekâna alman yeterli."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: şebeke suyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Kullanıcı net MALZEME LİSTESİ ve TEKLİF istiyor.\nGirizgah, özet, 'istersen', 'bir sonraki adımda' gibi cümleler YASAK.\nCevap formatın ŞÖYLE OLACAK:\n1) En fazla 1 cümlelik çok kısa özet.\n2) Hemen altında madde madde liste; her satırda: 'Adet x Ürün adı – kısa açıklama – Yaklaşık fiyat (X TL)'. En fazla 20 satır.\n3) Listenin en altında tek satırda: 'Toplam yaklaşık: X–Y TL (malzeme, işçilik hariç/dahil)'.\nBaşka açıklama, soru, davet YAZMA.\n\nKULLANICI MESAJI:\ntamam bana malzeme listesini ver"
+      },
+      {
+        "role": "assistant",
+        "content": "200 m² dikdörtgen, hafif eğimli ve 11 meyve ağaçlı bahçe için 3 zone rotor + 1 zone damla, tam otomatik sulama malzeme listesi ve yaklaşık maliyet aşağıdadır:\n\n1) 12 x Rain Bird 3504 rotor sprinkler – çim alan için orta menzil rotor başlık – Yaklaşık fiyat (12 × 420 TL ≈ 5.040 TL)  \n2) 4 x Rain Bird 100 DV 1\" 24V solenoid vana – 3 rotor zonu + 1 damla zonu için otomatik vana – Yaklaşık fiyat (4 × 1.188 TL ≈ 4.752 TL)  \n3) 1 x Rain Bird RC2 6 istasyon iç mekân kontrol ünitesi – 4 zone’u yöneten WiFi’li otomasyon paneli – Yaklaşık fiyat (≈ 5.000 TL)  \n4) 1 x Arangül 12\"/14\" vana kutusu – solenoid vanaların yer altı montajı ve korunması – Yaklaşık fiyat (≈ 970 TL)  \n5) 40 m x PE100 Kangal Boru 32 mm 10 ATÜ – ana hat borusu (şebekeden kolektöre ve zon başlarına) – Yaklaşık fiyat (40 × 24 TL ≈ 960 TL)  \n6) 80 m x PE100 Kangal Boru 20 mm 16 ATÜ – rotor ve damla lateralleri için hat borusu – Yaklaşık fiyat (80 × 13,9 TL ≈ 1.110 TL)  \n7) 80 m x 16 mm entegre damla boru (16x40 veya 16x50 cm) – sağ/sol kenardaki 11 ağacı çevreleyen damla halkaları – Yaklaşık fiyat (80 × 4,4 TL ≈ 350 TL)  \n8) 30 x Basınç ayarlı damlatıcı 4 L/saat – ağaç başına 2–3 noktasal damlatıcı takviyesi – Yaklaşık fiyat (30 × 2,6 TL ≈ 80 TL)  \n9) 1 x Plastik mini filtre 1\" (Serdrip) – tüm sistemi tortu ve pislikten koruyan ana filtre – Yaklaşık fiyat (≈ 180 TL)  \n10) 1 x Basınç düşürücü 3/4\" (Kalde) – damla zonu basıncını uygun seviyeye indiren regülatör – Yaklaşık fiyat (≈ 900 TL)  \n11) 1 x MTT100 kolektör gövdesi + 4 lü nipel seti – 4 adet solenoid vana için manifold – Yaklaşık fiyat (≈ 300 TL)  \n12) 12 x 32 mm priz kolye – her rotor için ana hattan branşman çıkışı – Yaklaşık fiyat (12 × 38 TL ≈ 460 TL)  \n13) 24 x 20 × 1/2\" kaplin dış dişli dirsek – priz kopyeden PE20’ye ve rotora dönüşlü bağlantı – Yaklaşık fiyat (24 × 18 TL ≈ 430 TL)  \n14) 20 x PE kaplin/dirsek/TE (20 ve 32 mm karışık) – hat dönüşleri, ek ve ana/yan hat dağıtımları – Yaklaşık fiyat (≈ 600 TL)  \n15) 1 x Sulama sinyal kablosu 7 damarlı (SSK7, 50 m) – kontrol ünitesinden 4 solenoid vanaya kumanda kablosu – Yaklaşık fiyat (50 × 45,5 TL ≈ 2.275 TL)  \n16) 1 x Teflon bant Veron küçük (2’li almak mantıklı) – tüm dişli bağlantılarda sızdırmazlık – Yaklaşık fiyat (≈ 30 TL)  \n17) 20 x Damlama kazığı / gözlük tapa / küçük damla fittings karışık – damla hatlarının sabitlenmesi ve uç kapama – Yaklaşık fiyat (≈ 150 TL)  \n18) 1 x Klasik boru kesme makası 16–42 mm (Arangül veya SGS) – PE ve damla borularını düzgün kesmek için – Yaklaşık fiyat (≈ 580 TL)  \n\nToplam yaklaşık: 22.000–26.000 TL (malzeme, işçilik hariç)."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: şebeke suyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Bu mesaja EN FAZLA 3 cümleyle kısa cevap ver.\nMadde, başlık, tablo, uzun teknik açıklama, fiyat listesi YASAK.\nGerekiyorsa sadece 1 tane netleştirici soru sor, sonra dur.\n\nKULLANICI MESAJI:\ndevam et"
+      },
+      {
+        "role": "assistant",
+        "content": "Bu kurduğumuz planda artık yapılacaklar; boru güzergâhını ve rotor–damla hatlarının yerlerini arazi üzerine ip/spreyle işaretlemek, sonra PE32 ana hat ve PE20 lateralleri gömüp rotor ve damla hatlarını bağlamak. En son adımda kontrol ünitesi, solenoid vanalar ve sinyal kablosu bağlantılarını yapıp her zone’u tek tek denemen yeterli olur. İstersen şimdi \"kazı derinliği ve boru döşeme mesafelerini\" de 2–3 cümlede netleştirebiliriz."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: şebeke suyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Bu mesaja EN FAZLA 3 cümleyle kısa cevap ver.\nMadde, başlık, tablo, uzun teknik açıklama, fiyat listesi YASAK.\nGerekiyorsa sadece 1 tane netleştirici soru sor, sonra dur.\n\nKULLANICI MESAJI:\nnetleştir"
+      },
+      {
+        "role": "assistant",
+        "content": "Boru ve sprink hatlarını çim altında don riski yoksa yaklaşık 25–30 cm derine, rotor gövdeleri üst kapak çim seviyesine gelecek şekilde gömmen yeterli olur. Rotorlar arasında, seçtiğin nozulun 7–10 m civarı atış yarıçapına göre “kafa kafaya sulama” olacak biçimde (yani her rotor diğerine su atacak şekilde) mesafe bırakmalısın. Damla hatlarını ise genelde 5–10 cm derine veya yüzeyde malç altında, ağaç gövdelerinden 40–60 cm uzağa halka gibi döşemen iyi olur."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: şebeke suyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Kullanıcı net MALZEME LİSTESİ ve TEKLİF istiyor.\nGirizgah, özet, 'istersen', 'bir sonraki adımda' gibi cümleler YASAK.\nCevap formatın ŞÖYLE OLACAK:\n1) En fazla 1 cümlelik çok kısa özet.\n2) Hemen altında madde madde liste; her satırda: 'Adet x Ürün adı – kısa açıklama – Yaklaşık fiyat (X TL)'. En fazla 20 satır.\n3) Listenin en altında tek satırda: 'Toplam yaklaşık: X–Y TL (malzeme, işçilik hariç/dahil)'.\nBaşka açıklama, soru, davet YAZMA.\n\nKULLANICI MESAJI:\nmalzeme listesi çıkar"
+      },
+      {
+        "role": "assistant",
+        "content": "200 m² dikdörtgen bahçe, 3 zone rotor + 1 zone damla, tam otomatik sistem için temel malzeme listesi ve yaklaşık maliyet:\n\n1) 12 x Rain Bird 3504 rotor sprinkler – çim alan için orta menzil rotor başlık – Yaklaşık fiyat (12 × 420 TL ≈ 5.040 TL)  \n2) 4 x Rain Bird 100 DV 1\" 24V solenoid vana – 3 rotor zonu + 1 damla zonu için otomatik vana – Yaklaşık fiyat (4 × 1.188 TL ≈ 4.752 TL)  \n3) 1 x Rain Bird RC2 6 istasyon iç mekân kontrol ünitesi – 4 zone’u yöneten WiFi’li otomasyon paneli – Yaklaşık fiyat (≈ 5.000 TL)  \n4) 1 x Arangül 12\"/14\" vana kutusu – solenoid vanaların yer altı montajı ve korunması – Yaklaşık fiyat (≈ 970 TL)  \n5) 40 m x PE100 Kangal Boru 32 mm 10 ATÜ – ana hat borusu (şebekeden kolektöre ve zon başlarına) – Yaklaşık fiyat (40 × 24 TL ≈ 960 TL)  \n6) 80 m x PE100 Kangal Boru 20 mm 16 ATÜ – rotor ve damla lateralleri için hat borusu – Yaklaşık fiyat (80 × 13,9 TL ≈ 1.110 TL)  \n7) 80 m x 16 mm entegre damla boru (16x40 veya 16x50 cm) – sağ/sol kenardaki 11 ağacı çevreleyen damla halkaları – Yaklaşık fiyat (80 × 4,4 TL ≈ 350 TL)  \n8) 30 x Basınç ayarlı damlatıcı 4 L/saat – ağaç başına 2–3 noktasal damlatıcı takviyesi – Yaklaşık fiyat (30 × 2,6 TL ≈ 80 TL)  \n9) 1 x Plastik mini filtre 1\" (Serdrip) – tüm sistemi tortu ve pislikten koruyan ana filtre – Yaklaşık fiyat (≈ 180 TL)  \n10) 1 x Basınç düşürücü 3/4\" – damla zonu basıncını uygun seviyeye indiren regülatör – Yaklaşık fiyat (≈ 900 TL)  \n11) 1 x MTT100 kolektör gövdesi + 4 lü nipel seti – 4 adet solenoid vana için manifold – Yaklaşık fiyat (≈ 300 TL)  \n12) 12 x 32 mm priz kolye – her rotor için ana hattan branşman çıkışı – Yaklaşık fiyat (12 × 38 TL ≈ 460 TL)  \n13) 24 x 20 × 1/2\" kaplin dış dişli dirsek – priz kolyeden PE20’ye ve rotora dönüşlü bağlantı – Yaklaşık fiyat (24 × 18 TL ≈ 430 TL)  \n14) 20 x PE kaplin/dirsek/TE (20 ve 32 mm karışık) – hat dönüşleri, ek ve ana/yan hat dağıtımları – Yaklaşık fiyat (≈ 600 TL)  \n15) 1 x Sulama sinyal kablosu 7 damarlı (SSK7, 50 m) – kontrol ünitesinden 4 solenoid vanaya kumanda kablosu – Yaklaşık fiyat (50 × 45,5 TL ≈ 2.275 TL)  \n16) 1 x Teflon bant Veron küçük (2’li almak mantıklı) – tüm dişli bağlantılarda sızdırmazlık – Yaklaşık fiyat (≈ 30 TL)  \n17) 20 x Damlama kazığı / gözlük tapa / küçük damla fittings karışık – damla hatlarının sabitlenmesi ve uç kapama – Yaklaşık fiyat (≈ 150 TL)  \n18) 1 x Klasik boru kesme makası 16–42 mm – PE ve damla borularını düzgün kesmek için – Yaklaşık fiyat (≈ 580 TL)  \n\nToplam yaklaşık: 22.000–26.000 TL (malzeme, işçilik hariç)."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: şebeke suyu\n - Sistem tipi: sprink\n - Otomasyon: tam otomatik\n\nKURAL: Kullanıcı net MALZEME LİSTESİ ve TEKLİF istiyor.\nGirizgah, özet, 'istersen', 'bir sonraki adımda' gibi cümleler YASAK.\nCevap formatın ŞÖYLE OLACAK:\n1) En fazla 1 cümlelik çok kısa özet.\n2) Hemen altında madde madde liste; her satırda: 'Adet x Ürün adı – kısa açıklama – Yaklaşık fiyat (X TL)'. En fazla 20 satır.\n3) Listenin en altında tek satırda: 'Toplam yaklaşık: X–Y TL (malzeme, işçilik hariç/dahil)'.\nBaşka açıklama, soru, davet YAZMA.\n\nKULLANICI MESAJI:\nmalzeme listesi çıkar"
+      },
+      {
+        "role": "assistant",
+        "content": "200 m² dikdörtgen bahçe için 3 zone sprey sprink + tam otomatik sistem temel malzeme listesi ve yaklaşık maliyet:\n\n1) 12 x Rain Bird 1804 sprey gövde 10 cm – çim için klasik pop-up sprey gövde – Yaklaşık fiyat (12 × 126 TL ≈ 1.500 TL)  \n2) 12 x Rain Bird VAN 12 nozül – 3,5–4 m menzilli ayarlı sprey nozulu – Yaklaşık fiyat (12 × 65 TL ≈ 780 TL)  \n3) 4 x Rain Bird 100 DV 1\" 24V solenoid vana – 3 sprey zonu + gerekirse 1 yedek/ilave zone için otomatik vana – Yaklaşık fiyat (4 × 1.188 TL ≈ 4.752 TL)  \n4) 1 x Rain Bird RC2 6 istasyon iç mekân kontrol ünitesi – 4 zone’u yöneten WiFi’li otomasyon paneli – Yaklaşık fiyat (≈ 5.000 TL)  \n5) 1 x Arangül 12\"/14\" vana kutusu – solenoid vanaların yer altı montajı ve korunması – Yaklaşık fiyat (≈ 970 TL)  \n6) 40 m x PE100 Kangal Boru 32 mm 10 ATÜ – ana hat borusu (şebekeden kolektöre ve zon başlarına) – Yaklaşık fiyat (40 × 24 TL ≈ 960 TL)  \n7) 80 m x PE100 Kangal Boru 20 mm 16 ATÜ – sprey lateralleri için hat borusu – Yaklaşık fiyat (80 × 13,9 TL ≈ 1.110 TL)  \n8) 1 x Plastik mini filtre 1\" (Serdrip) – tüm sistemi tortu ve pislikten koruyan ana filtre – Yaklaşık fiyat (≈ 180 TL)  \n9) 1 x MTT100 kolektör gövdesi + 4 lü nipel seti – 4 adet solenoid vana için manifold – Yaklaşık fiyat (≈ 300 TL)  \n10) 12 x 32 mm priz kolye – her sprey için ana hattan branşman çıkışı – Yaklaşık fiyat (12 × 38 TL ≈ 460 TL)  \n11) 24 x 20 × 1/2\" kaplin dış dişli dirsek – priz kolyeden PE20’ye ve spreylere dönüşlü bağlantı – Yaklaşık fiyat (24 × 18 TL ≈ 430 TL)  \n12) 20 x PE kaplin/dirsek/TE (20 ve 32 mm karışık) – hat dönüşleri, ek ve ana/yan hat dağıtımları – Yaklaşık fiyat (≈ 600 TL)  \n13) 1 x Sulama sinyal kablosu 7 damarlı (SSK7, 50 m) – kontrol ünitesinden 4 solenoid vanaya kumanda kablosu – Yaklaşık fiyat (50 × 45,5 TL ≈ 2.275 TL)  \n14) 1 x Teflon bant Veron küçük (2’li almak mantıklı) – tüm dişli bağlantılarda sızdırmazlık – Yaklaşık fiyat (≈ 30 TL)  \n15) 1 x Klasik boru kesme makası 16–42 mm – PE borularını düzgün kesmek için – Yaklaşık fiyat (≈ 580 TL)  \n\nToplam yaklaşık: 18.000–22.000 TL (malzeme, işçilik hariç)."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: şebeke suyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Bu mesaja EN FAZLA 3 cümleyle kısa cevap ver.\nMadde, başlık, tablo, uzun teknik açıklama, fiyat listesi YASAK.\nGerekiyorsa sadece 1 tane netleştirici soru sor, sonra dur.\n\nKULLANICI MESAJI:\n11 adet ağaç var, hafif eğim var"
+      },
+      {
+        "role": "assistant",
+        "content": "Bu bilgilerle en mantıklı kurulum, çim alanı 3 zone rotorla, 11 ağacı ise ayrı 1 zone damla sulama ile beslemek (toplam 4 zone) olacaktır. Ana hatlarda PE100 32 mm, tüm rotor ve damla laterallerinde PE100 20 mm kullanıp 4 adet 1\" solenoid vana ve en az 4 istasyonlu kontrol ünitesiyle tam otomatik sistemi kurabilirsin. Ağaçlar aynı hatta sıralı mı (sağ/sol kenar boyunca), yoksa bahçeye dağınık mı?"
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: şebeke suyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Bu mesaja EN FAZLA 3 cümleyle kısa cevap ver.\nMadde, başlık, tablo, uzun teknik açıklama, fiyat listesi YASAK.\nGerekiyorsa sadece 1 tane netleştirici soru sor, sonra dur.\n\nKULLANICI MESAJI:\n6 sağda, 5 solda"
+      },
+      {
+        "role": "assistant",
+        "content": "Ağaçların 6’sı sağ kenarda, 5’i sol kenarda olduğu için çimi 3 zone rotorla, iki kenar boyunca giden tek bir damla hattını da 1 ayrı zone olarak planlamak en pratik çözümdür. Sağ ve sol kenara, çim rotorlardan biraz dışta kalacak şekilde 16 mm damla boruyu paralel döşeyip her ağaca 2–3 damlatıcı veya 1–2 tur entegre damla boru vermelisin. Rotorlar ve damla hattı için ana hat yine PE100 32 mm, tüm lateraller PE100 20 mm kalabilir."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: şebeke suyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Bu mesaja EN FAZLA 3 cümleyle kısa cevap ver.\nMadde, başlık, tablo, uzun teknik açıklama, fiyat listesi YASAK.\nGerekiyorsa sadece 1 tane netleştirici soru sor, sonra dur.\n\nKULLANICI MESAJI:\nfiyat teklifi ver"
+      },
+      {
+        "role": "assistant",
+        "content": "Bu tipte 4 zonlu (3 rotor + 1 damla) tam otomatik sistem için malzeme toplamı kabaca 18.000–22.000 TL bandında olur (işçilik hariç). İşçiliği de bir firma yaparsa, kazı, boru döşeme ve montajla birlikte genelde malzemenin yaklaşık 1–1,5 katı kadar ek maliyet çıkabilir. Şebeke basıncın çok zayıfsa ek olarak küçük bir hidrofor ihtiyacı da doğabilir, bu da 6.000–10.000 TL civarı ekstra bir kalem olur."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: şebeke suyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Kullanıcı net MALZEME LİSTESİ ve TEKLİF istiyor.\nGirizgah, özet, 'istersen', 'bir sonraki adımda' gibi cümleler YASAK.\nCevap formatın ŞÖYLE OLACAK:\n1) En fazla 1 cümlelik çok kısa özet.\n2) Hemen altında madde madde liste; her satırda: 'Adet x Ürün adı – kısa açıklama – Yaklaşık fiyat (X TL)'. En fazla 20 satır.\n3) Listenin en altında tek satırda: 'Toplam yaklaşık: X–Y TL (malzeme, işçilik hariç/dahil)'.\nBaşka açıklama, soru, davet YAZMA.\n\nKULLANICI MESAJI:\nmalzeme listesi ile birlikte yanlarında fiyat yazan liste ver"
+      },
+      {
+        "role": "assistant",
+        "content": "200 m² dikdörtgen, 3 zone rotor + 1 zone damla, tam otomatik sistem için temel malzeme listesi ve yaklaşık maliyet:\n\n1) 12 x Rain Bird 3504 rotor sprinkler – çim alan için orta menzil rotor başlık – Yaklaşık fiyat (12 × 420 TL ≈ 5.040 TL)  \n2) 4 x Rain Bird 100 DV 1\" 24V solenoid vana – 3 rotor zonu + 1 damla zonu için otomatik vana – Yaklaşık fiyat (4 × 1.188 TL ≈ 4.752 TL)  \n3) 1 x Rain Bird RC2 6 istasyon iç mekân kontrol ünitesi – 4 zone’u yöneten WiFi’li otomasyon paneli – Yaklaşık fiyat (≈ 5.000 TL)  \n4) 1 x Arangül 12\"/14\" vana kutusu – solenoid vanaların yer altı montajı ve korunması – Yaklaşık fiyat (≈ 970 TL)  \n5) 40 m x PE100 Kangal Boru 32 mm 10 ATÜ – ana hat borusu (şebekeden kolektöre ve zon başlarına) – Yaklaşık fiyat (40 × 24 TL ≈ 960 TL)  \n6) 80 m x PE100 Kangal Boru 20 mm 16 ATÜ – rotor ve damla lateralleri için hat borusu – Yaklaşık fiyat (80 × 13,92 TL ≈ 1.115 TL)  \n7) 80 m x 16 mm entegre damla boru (16x40 veya 16x50 cm) – sağ/sol kenardaki 11 ağacı çevreleyen damla halkaları – Yaklaşık fiyat (80 × 4,36 TL ≈ 350 TL)  \n8) 30 x Basınç ayarlı damlatıcı 4 L/saat – ağaç başına ek noktasal damlatıcı (gerekirse) – Yaklaşık fiyat (30 × 2,62 TL ≈ 80 TL)  \n9) 1 x Plastik mini filtre 1\" (Serdrip) – tüm sistemi tortu ve pislikten koruyan ana filtre – Yaklaşık fiyat (≈ 181 TL)  \n10) 1 x Basınç düşürücü 3/4\" (Kalde) – damla zonu basıncını uygun seviyeye indiren regülatör – Yaklaşık fiyat (≈ 900 TL)  \n11) 1 x MTT100 kolektör gövdesi + bağlantı fittingsleri – 4 adet solenoid vana için manifold – Yaklaşık fiyat (≈ 300 TL)  \n12) 12 x 32 mm priz kolye – her rotor için PE32 ana hattan branşman çıkışı – Yaklaşık fiyat (12 × 38 TL ≈ 460 TL)  \n13) 24 x 20 × 1/2\" kaplin dış dişli dirsek – priz kolyeden PE20’ye ve rotora dönüşlü bağlantı – Yaklaşık fiyat (24 × 18,5 TL ≈ 445 TL)  \n14) 20 x PE kaplin/dirsek/TE (20 ve 32 mm karışık) – hat dönüşleri, ek ve ana/yan hat dağıtımları – Yaklaşık fiyat (≈ 600 TL)  \n15) 1 x Sulama sinyal kablosu 7 damarlı (SSK7, 50 m) – kontrol ünitesinden 4 solenoid vanaya kumanda kablosu – Yaklaşık fiyat (50 × 45,54 TL ≈ 2.275 TL)  \n16) 1 x Veron teflon bant küçük (2 rulo düşün) – tüm dişli bağlantılarda sızdırmazlık – Yaklaşık fiyat (≈ 28 TL)  \n17) 20 x Damlama kazığı / gözlük tapa / küçük damla fittings karışık – damla hatlarının sabitlenmesi ve uç kapama – Yaklaşık fiyat (≈ 150 TL)  \n18) 1 x Klasik boru kesme makası 16–42 mm (Arangül veya SGS) – PE ve damla borularını düzgün kesmek için – Yaklaşık fiyat (≈ 580 TL)  \n\nToplam yaklaşık: 22.000–26.000 TL (malzeme, işçilik hariç)."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: şebeke suyu\n - Sistem tipi: sprink\n - Otomasyon: tam otomatik\n\nKURAL: Kullanıcı net MALZEME LİSTESİ ve TEKLİF istiyor.\nGirizgah, özet, 'istersen', 'bir sonraki adımda' gibi cümleler YASAK.\nCevap formatın ŞÖYLE OLACAK:\n1) En fazla 1 cümlelik çok kısa özet.\n2) Hemen altında madde madde liste; her satırda: 'Adet x Ürün adı – kısa açıklama – Yaklaşık fiyat (X TL)'. En fazla 20 satır.\n3) Listenin en altında tek satırda: 'Toplam yaklaşık: X–Y TL (malzeme, işçilik hariç/dahil)'.\nBaşka açıklama, soru, davet YAZMA.\n\nKULLANICI MESAJI:\nfiyatlı malzeme listesi çıkar"
+      },
+      {
+        "role": "assistant",
+        "content": "200 m² dikdörtgen bahçe için 3 zone sprey sprink + tam otomatik sistem temel malzeme listesi ve yaklaşık maliyet:\n\n1) 12 x Rain Bird 1804 sprey gövde 10 cm – çim için klasik pop-up sprey gövde – Yaklaşık fiyat (12 × 126 TL ≈ 1.500 TL)  \n2) 12 x Rain Bird VAN 12 nozül – 3,5–4 m menzilli ayarlı sprey nozulu – Yaklaşık fiyat (12 × 65 TL ≈ 780 TL)  \n3) 4 x Rain Bird 100 DV 1\" 24V solenoid vana – 3 sprey zonu + 1 yedek/ilave zone için otomatik vana – Yaklaşık fiyat (4 × 1.188 TL ≈ 4.752 TL)  \n4) 1 x Rain Bird RC2 6 istasyon iç mekân kontrol ünitesi – 4 zone’u yöneten WiFi’li otomasyon paneli – Yaklaşık fiyat (≈ 5.000 TL)  \n5) 1 x Arangül 12\"/14\" vana kutusu – solenoid vanaların yer altı montajı ve korunması – Yaklaşık fiyat (≈ 970 TL)  \n6) 40 m x PE100 Kangal Boru 32 mm 10 ATÜ – ana hat borusu (şebekeden kolektöre ve zon başlarına) – Yaklaşık fiyat (40 × 24 TL ≈ 960 TL)  \n7) 80 m x PE100 Kangal Boru 20 mm 16 ATÜ – sprey lateralleri için hat borusu – Yaklaşık fiyat (80 × 13,92 TL ≈ 1.115 TL)  \n8) 1 x Plastik mini filtre 1\" (Serdrip) – sistemi tortu ve pislikten koruyan ana filtre – Yaklaşık fiyat (≈ 181 TL)  \n9) 1 x MTT100 kolektör gövdesi + bağlantı fittingsleri – 4 adet solenoid vana için manifold – Yaklaşık fiyat (≈ 300 TL)  \n10) 12 x 32 mm priz kolye – her sprey için PE32 ana hattan branşman çıkışı – Yaklaşık fiyat (12 × 38 TL ≈ 460 TL)  \n11) 24 x 20 × 1/2\" kaplin dış dişli dirsek – priz kolyeden PE20’ye ve spreylere dönüşlü bağlantı – Yaklaşık fiyat (24 × 18,5 TL ≈ 445 TL)  \n12) 20 x PE kaplin/dirsek/TE (20 ve 32 mm karışık) – hat dönüşleri, ek ve ana/yan hat dağıtımları – Yaklaşık fiyat (≈ 600 TL)  \n13) 1 x Sulama sinyal kablosu 7 damarlı (SSK7, 50 m) – kontrol ünitesinden 4 solenoid vanaya kumanda kablosu – Yaklaşık fiyat (50 × 45,54 TL ≈ 2.275 TL)  \n14) 1 x Veron teflon bant küçük (2 rulo düşün) – tüm dişli bağlantılarda sızdırmazlık – Yaklaşık fiyat (≈ 28 TL)  \n15) 1 x Klasik boru kesme makası 16–42 mm – PE borularını düzgün kesmek için – Yaklaşık fiyat (≈ 580 TL)  \n\nToplam yaklaşık: 18.000–22.000 TL (malzeme, işçilik hariç)."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: şebeke suyu\n - Sistem tipi: sprink\n - Otomasyon: tam otomatik\n\nKURAL: Kullanıcı net MALZEME LİSTESİ ve TEKLİF istiyor.\nGirizgah, özet, 'istersen', 'bir sonraki adımda' gibi cümleler YASAK.\nCevap formatın ŞÖYLE OLACAK:\n1) En fazla 1 cümlelik çok kısa özet.\n2) Hemen altında madde madde liste; her satırda: 'Adet x Ürün adı – kısa açıklama – Yaklaşık fiyat (X TL)'. En fazla 20 satır.\n3) Listenin en altında tek satırda: 'Toplam yaklaşık: X–Y TL (malzeme, işçilik hariç/dahil)'.\nBaşka açıklama, soru, davet YAZMA.\n\nKULLANICI MESAJI:\nmalzeme listesi çıkar"
+      },
+      {
+        "role": "assistant",
+        "content": "200 m² dikdörtgen çim alan için 3 zone sprey sprink + tam otomatik sistem temel malzeme listesi ve yaklaşık maliyet:\n\n1) 12 x Rain Bird 1804 sprey gövde 10 cm – çim için klasik pop-up sprey gövde – Yaklaşık fiyat (12 × 126 TL ≈ 1.500 TL)  \n2) 12 x Rain Bird VAN 12 nozül – 3,5–4 m menzilli ayarlı sprey nozulu – Yaklaşık fiyat (12 × 65 TL ≈ 780 TL)  \n3) 4 x Rain Bird 100 DV 1\" 24V solenoid vana – 3 sprey zonu + 1 yedek/ilave zone için otomatik vana – Yaklaşık fiyat (4 × 1.188 TL ≈ 4.752 TL)  \n4) 1 x Rain Bird RC2 6 istasyon iç mekân kontrol ünitesi – 4 zone’u yöneten WiFi’li otomasyon paneli – Yaklaşık fiyat (≈ 5.000 TL)  \n5) 1 x Arangül 12\"/14\" vana kutusu – solenoid vanaların yer altı montajı ve korunması – Yaklaşık fiyat (≈ 970 TL)  \n6) 40 m x PE100 Kangal Boru 32 mm 10 ATÜ – ana hat borusu (şebekeden kolektöre ve zon başlarına) – Yaklaşık fiyat (40 × 24 TL ≈ 960 TL)  \n7) 80 m x PE100 Kangal Boru 20 mm 16 ATÜ – sprink lateralleri için hat borusu – Yaklaşık fiyat (80 × 13,92 TL ≈ 1.115 TL)  \n8) 1 x Plastik mini filtre 1\" (Serdrip) – sistemi tortu ve pislikten koruyan ana filtre – Yaklaşık fiyat (≈ 181 TL)  \n9) 1 x MTT100 kolektör gövdesi + bağlantı fittingsleri – 4 adet solenoid vana için manifold – Yaklaşık fiyat (≈ 300 TL)  \n10) 12 x 32 mm priz kolye – her sprink için PE32 ana hattan branşman çıkışı – Yaklaşık fiyat (12 × 38 TL ≈ 460 TL)  \n11) 24 x 20 × 1/2\" kaplin dış dişli dirsek – priz kolyeden PE20’ye ve spreylere dönüşlü bağlantı – Yaklaşık fiyat (24 × 18,5 TL ≈ 445 TL)  \n12) 20 x PE kaplin/dirsek/TE (20 ve 32 mm karışık) – hat dönüşleri, ek ve ana/yan hat dağıtımları – Yaklaşık fiyat (≈ 600 TL)  \n13) 1 x Sulama sinyal kablosu 7 damarlı (SSK7, 50 m) – kontrol ünitesinden 4 solenoid vanaya kumanda kablosu – Yaklaşık fiyat (50 × 45,54 TL ≈ 2.275 TL)  \n14) 1 x Veron teflon bant küçük (2 rulo düşün) – tüm dişli bağlantılarda sızdırmazlık – Yaklaşık fiyat (≈ 28 TL)  \n15) 1 x Klasik boru kesme makası 16–42 mm – PE borularını düzgün kesmek için – Yaklaşık fiyat (≈ 580 TL)  \n\nToplam yaklaşık: 18.000–22.000 TL (malzeme, işçilik hariç)."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: kuyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Bu mesaja EN FAZLA 3 cümleyle kısa cevap ver.\nMadde, başlık, tablo, uzun teknik açıklama, fiyat listesi YASAK.\nGerekiyorsa sadece 1 tane netleştirici soru sor, sonra dur.\n\nKULLANICI MESAJI:\n11 ağaç var, eğim az"
+      },
+      {
+        "role": "assistant",
+        "content": "Bu bilgilerle 3 zone rotor (çim) + 1 zone damla (11 ağaç) ve kuyu suyunun önüne filtre + mümkünse depo + hidrofor koyarak tam otomatik bir sistem kurmak en sağlıklısı olur. Ana hat için PE100 32 mm, tüm rotor ve damla lateraller için PE100 20 mm kullanıp 4 adet 1\" solenoid vana ve en az 4 istasyonlu kontrol ünitesi planlamalısın. Kuyudan mevcutta pompa/hidrofor var mı yoksa doğrudan dalgıçtan mı besleme düşünüyorsun?"
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: kuyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Bu mesaja EN FAZLA 3 cümleyle kısa cevap ver.\nMadde, başlık, tablo, uzun teknik açıklama, fiyat listesi YASAK.\nGerekiyorsa sadece 1 tane netleştirici soru sor, sonra dur.\n\nKULLANICI MESAJI:\ndoğrudan dalgıçla"
+      },
+      {
+        "role": "assistant",
+        "content": "Dalgıçtan doğrudan beslediğin için mutlaka çıkışa önce depo veya en azından iyi bir filtre + basınç regülatörü koyup, ordan PE100 32 mm ana hatla 3 rotor zone + 1 damla zone’a dağıtman gerekir. Rotor ve damla lateraller yine PE100 20 mm, 4 adet 1\" solenoid vana ve en az 4 istasyonlu otomasyon ile tam otomatik çalışır. Dalgıcın yaklaşık debi ve basıncını (örneğin m³/saat ve metre basma yüksekliği) biliyor musun?"
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: kuyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Bu mesaja EN FAZLA 3 cümleyle kısa cevap ver.\nMadde, başlık, tablo, uzun teknik açıklama, fiyat listesi YASAK.\nGerekiyorsa sadece 1 tane netleştirici soru sor, sonra dur.\n\nKULLANICI MESAJI:\nbilmiyorum"
+      },
+      {
+        "role": "assistant",
+        "content": "Debi/basıncı bilmediğimiz için güvenli tarafta kalıp 3 rotor zone’u küçük tutup (her zonda az sayıda rotor), ayrıca 1 damla zone ile toplam 4 zone’lu bir sistem kurmak gerekir. Kuyu suyu olduğu için dalgıç çıkışına mutlaka iyi bir filtre ve mümkünse küçük bir denge deposu + basınç şalterli kontrol koyup oradan PE100 32 mm ana hatla sulama kolektörüne gitmen doğru olur. İstersen bir sonraki adımda 4 zone’lu tam otomatik rotor + damla sistem için fiyatlı malzeme listesini yazabilirim."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: kuyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Bu mesaja EN FAZLA 3 cümleyle kısa cevap ver.\nMadde, başlık, tablo, uzun teknik açıklama, fiyat listesi YASAK.\nGerekiyorsa sadece 1 tane netleştirici soru sor, sonra dur.\n\nKULLANICI MESAJI:\nyaz"
+      },
+      {
+        "role": "assistant",
+        "content": "200 m² dikdörtgen alan için 3 zone rotor (çim) + 1 zone damla (ağaçlar) ve kuyu beslemeli tam otomatik sistem mantıklı olur. Rotor ve damla laterallerinde PE100 20 mm, dalgıç sonrası ana hatta PE100 32 mm, kolektörde 4 adet 1\" solenoid vana ve en az 4 istasyonlu kontrol ünitesi yeterlidir. Kuyu suyu için dalgıç çıkışında iyi bir filtre ve mümkünse küçük bir denge deposu + basınç şalterli kontrol kullanman şart."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: kuyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Bu mesaja EN FAZLA 3 cümleyle kısa cevap ver.\nMadde, başlık, tablo, uzun teknik açıklama, fiyat listesi YASAK.\nGerekiyorsa sadece 1 tane netleştirici soru sor, sonra dur.\n\nKULLANICI MESAJI:\nekle"
+      },
+      {
+        "role": "assistant",
+        "content": "Mevcut düzendeki tek ekleme, dalgıçtan sonra mutlaka bir filtre (tercihen disk filtre) ve basınç regülatörü/dengeli hidrofor ile sabit basınç sağlayıp ondan sonra PE100 32 mm ana hatla kolektöre gitmektir. Çim rotorlarda 3504 rotor, ağaçlarda 16 mm damla boru + basınç ayarlı damlatıcı kullanman hem debiyi hem de su tüketimini güvenli tutar. İhtiyaç olursa aynı kolektörden ileride ek rotor veya damla zone’u çıkarmak için 1 boş çıkış bırakmanı da öneririm."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: kuyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Bu mesaja EN FAZLA 3 cümleyle kısa cevap ver.\nMadde, başlık, tablo, uzun teknik açıklama, fiyat listesi YASAK.\nGerekiyorsa sadece 1 tane netleştirici soru sor, sonra dur.\n\nKULLANICI MESAJI:\ntamam"
+      },
+      {
+        "role": "assistant",
+        "content": "4 zonlu (3 rotor + 1 damla) tam otomatik sistem tasarımını bu bilgilerle netleştirmiş olduk. Şimdi istersen bir sonraki adımda sadece fiyatlı veya sadece ürün isimli malzeme listesini ayrı ayrı yazabilirim."
+      },
+      {
+        "role": "user",
+        "content": "Bahçe için elimde şu ön bilgiler var:\n - Alan: 200 m²\n - Şekil: dikdörtgen\n - Su kaynağı: kuyu\n - Sistem tipi: rotor\n - Otomasyon: tam otomatik\n\nKURAL: Kullanıcı net MALZEME LİSTESİ ve TEKLİF istiyor.\nGirizgah, özet, 'istersen', 'bir sonraki adımda' gibi cümleler YASAK.\nCevap formatın ŞÖYLE OLACAK:\n1) En fazla 1 cümlelik çok kısa özet.\n2) Hemen altında madde madde liste; her satırda: 'Adet x Ürün adı – kısa açıklama – Yaklaşık fiyat (X TL)'. En fazla 20 satır.\n3) Listenin en altında tek satırda: 'Toplam yaklaşık: X–Y TL (malzeme, işçilik hariç/dahil)'.\nBaşka açıklama, soru, davet YAZMA.\n\nKULLANICI MESAJI:\nfiyatlı malzeme listesi çıkar"
+      },
+      {
+        "role": "assistant",
+        "content": "200 m² dikdörtgen bahçe için kuyu beslemeli 3 zone rotor + 1 zone damla, tam otomatik sistem temel malzeme listesi ve yaklaşık maliyet:\n\n1) 12 x Rain Bird 3504 rotor sprinkler – çim alan için orta menzil rotor başlık – Yaklaşık fiyat (12 × 420 TL ≈ 5.040 TL)  \n2) 4 x Rain Bird 100 DV 1\" 24V solenoid vana – 3 rotor zonu + 1 damla zonu için otomatik vana – Yaklaşık fiyat (4 × 1.188 TL ≈ 4.752 TL)  \n3) 1 x Rain Bird RC2 6 istasyon iç mekân kontrol ünitesi – 4 zone’u yöneten WiFi’li otomasyon paneli – Yaklaşık fiyat (≈ 5.000 TL)  \n4) 1 x Plastik mini filtre 1\" (Serdrip) – kuyu suyundaki tortuyu tutan ana filtre – Yaklaşık fiyat (≈ 181 TL)  \n5) 1 x Basınç düşürücü 3/4\" (Kalde) – dalgıçtan gelen yüksek basıncı sulama sistemine uygun seviyeye indirir – Yaklaşık fiyat (≈ 900 TL)  \n6) 40 m x PE100 Kangal Boru 32 mm 10 ATÜ – dalgıç çıkışı/filtre sonrası ana hat ve kolektör beslemesi – Yaklaşık fiyat (40 × 24 TL ≈ 960 TL)  \n7) 80 m x PE100 Kangal Boru 20 mm 16 ATÜ – tüm rotor ve damla lateralleri için boru hattı – Yaklaşık fiyat (80 × 13,92 TL ≈ 1.115 TL)  \n8) 80 m x 16 mm entegre damla boru (16x40–50 cm) – 11 ağacın çevresinde damla halkaları için – Yaklaşık fiyat (80 × 4,36 TL ≈ 350 TL)  \n9) 30 x Basınç ayarlı damlatıcı 4 L/saat – her ağaç için 2–3 noktasal damlatıcı – Yaklaşık fiyat (30 × 2,62 TL ≈ 80 TL)  \n10) 1 x MTT100 kolektör gövdesi + fittings – 4 solenoid vananın bağlandığı manifold – Yaklaşık fiyat (≈ 300 TL)  \n11) 1 x Arangül 12\"/14\" vana kutusu – kolektör ve solenoid vanaların yer altı montajı için – Yaklaşık fiyat (≈ 970 TL)  \n12) 12 x 32 mm priz kolye – ana PE32 hattan her rotor için branşman çıkışı – Yaklaşık fiyat (12 × 38 TL ≈ 460 TL)  \n13) 24 x 20 × 1/2\" kaplin dış dişli dirsek – priz kolyeden PE20’ye ve rotorlara dönüşlü bağlantı – Yaklaşık fiyat (24 × 18,5 TL ≈ 445 TL)  \n14) 20 x PE kaplin/dirsek/TE (20 ve 32 mm karışık) – hat dönüşleri, ekler ve dağıtım noktaları – Yaklaşık fiyat (≈ 600 TL)  \n15) 1 x Sulama sinyal kablosu 7 damarlı (SSK7, 50 m) – kontrol ünitesinden 4 solenoid vanaya kumanda kablosu – Yaklaşık fiyat (50 × 45,54 TL ≈ 2.275 TL)  \n16) 1 x Veron teflon bant küçük (2 rulo düşün) – tüm dişli bağlantılarda sızdırmazlık için – Yaklaşık fiyat (≈ 28 TL)  \n17) 20 x Damlama kazığı / gözlük tapa / küçük damla fittings karışık – damla hatlarını sabitleme ve uç kapama – Yaklaşık fiyat (≈ 150 TL)  \n18) 1 x Klasik boru kesme makası 16–42 mm – PE ve damla borularını düzgün kesmek için – Yaklaşık fiyat (≈ 580 TL)  \n\nToplam yaklaşık: 22.000–26.000 TL (malzeme, işçilik hariç)."
+      }
+    ],
+    "projects": [],
+    "createdAt": "2025-12-08T20:43:09.733Z"
   }
 ]
