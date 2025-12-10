@@ -1218,29 +1218,33 @@ try {
 <div id="beta-warning" 
      style="
         width: 100%;
-        padding: 12px 20px;
+        padding: 10px 18px;
         background: #fff7d6;
-        border-top: 1px solid #f0d98c;
+        border-bottom: 1px solid #f0d98c;
         color: #5e4a1b;
         font-size: 13px;
         font-family: system-ui, sans-serif;
         text-align: center;
         position: fixed;
-        bottom: 0;
+        top: 0;
         left: 0;
-        z-index: 10; /* ÖNEMLİ: Wizard’ın altında kalması için düşürdük */
+        z-index: 9999; /* ÜSTE sabit */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
      ">
-    🧪 <strong>Sulama Asistanı Beta Sürümü</strong> – Yapay zekâ desteklidir; zaman zaman hatalı bilgiler verebilir.
-    
-    <button onclick="document.getElementById('beta-warning').style.display='none';"
+    🧪 <strong>Sulama Asistanı Beta Sürümü</strong>
+
+    <button onclick="document.getElementById('beta-warning').style.display='none'; 
+                     document.body.style.paddingTop='0px';"
             style="
-                margin-left: 12px;
                 background: none;
                 border: none;
                 cursor: pointer;
-                color: #8a6d3b;
+                color: #7a5f2a;
                 text-decoration: underline;
-                font-size: 13px;
+                font-size: 12px;
             ">
         Kapat
     </button>
@@ -1248,7 +1252,19 @@ try {
 
 
 <script>
-  // Service worker kaydı (PWA)
+  // --- Beta bar üst konuma alındığı için sayfaya boşluk ekle ---
+  document.body.style.paddingTop = "48px";
+
+  // --- Beta bar kapatma fonksiyonu ---
+  function closeBetaWarning() {
+    const bar = document.getElementById("beta-warning");
+    if (bar) {
+      bar.style.display = "none";
+      document.body.style.paddingTop = "0px";
+    }
+  }
+
+  // --- PWA Service Worker kaydı ---
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       navigator.serviceWorker
@@ -1262,6 +1278,7 @@ try {
     });
   }
 </script>
+
 </body>
 </html>
 
