@@ -381,40 +381,40 @@
 </head>
 <body>
 
-  <!-- Üst Beta Uyarı Barı -->
   <div id="beta-warning" 
-       style="
-          width: 100%;
-          padding: 10px 18px;
-          background: #fff7d6;
-          border-bottom: 1px solid #f0d98c;
-          color: #5e4a1b;
-          font-size: 13px;
-          font-family: system-ui, sans-serif;
-          text-align: center;
-          position: fixed;
-          top: 0;
-          left: 0;
-          z-index: 9999;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-       ">
-      🧪 <strong>Sulama Asistanı Beta Sürümü</strong> – Yapay zekâ desteklidir; zaman zaman hatalı veya eksik bilgiler verebilir.
-      Lütfen önerileri uygulamadan önce kontrol edin.
-      <button onclick="closeBetaWarning()"
-              style="
-                  background: none;
-                  border: none;
-                  cursor: pointer;
-                  color: #7a5f2a;
-                  text-decoration: underline;
-                  font-size: 12px;
-              ">
-          Kapat
-      </button>
-  </div>
+     style="
+        width: 100%;
+        padding: 10px 18px;
+        background: #fff7d6;
+        border-bottom: 1px solid #f0d98c;
+        color: #5e4a1b;
+        font-size: 13px;
+        font-family: system-ui, sans-serif;
+        text-align: center;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 9999;
+     ">
+    🧪 <strong>Sulama Asistanı Beta Sürümü</strong> – Yapay zekâ desteklidir; zaman zaman hatalı veya eksik bilgiler verebilir.
+    Lütfen önerileri uygulamadan önce kontrol edin.
+    
+    <button
+        onclick="closeBetaWarning()"
+        style="
+            margin-left: 8px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #7a5f2a;
+            text-decoration: underline;
+            font-size: 12px;
+        ">
+        Kapat
+    </button>
+</div>
+
+
 
   <!-- Wizard -->
   <div class="wizard-overlay" id="wizardOverlay">
@@ -482,35 +482,37 @@
 
   <!-- Beta bar + PWA Service Worker script'i -->
   <script>
-    // Sayfa yüklendiğinde, üstteki beta bar kadar padding ver
-    window.addEventListener("load", () => {
-      const bar = document.getElementById("beta-warning");
-      if (bar) {
-        document.body.style.paddingTop = bar.offsetHeight + "px";
-      }
-
-      // Service worker kaydı (PWA)
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then((reg) => {
-            console.log("Service worker kayıtlı:", reg.scope);
-          })
-          .catch((err) => {
-            console.log("Service worker kaydı başarısız:", err);
-          });
-      }
-    });
-
-    // Beta barı kapat
-    function closeBetaWarning() {
-      const bar = document.getElementById("beta-warning");
-      if (bar) {
-        bar.style.display = "none";
-        document.body.style.paddingTop = "0px";
-      }
+  // Beta bar kapatma fonksiyonu
+  function closeBetaWarning() {
+    const bar = document.getElementById("beta-warning");
+    if (bar) {
+      bar.style.display = "none";
+      document.body.style.paddingTop = "0px";
     }
-  </script>
+  }
+
+  // Sayfa yüklendiğinde:
+  window.addEventListener("load", () => {
+    // Beta bar varsa, yüksekliği kadar yukarıdan boşluk ver
+    const bar = document.getElementById("beta-warning");
+    if (bar) {
+      document.body.style.paddingTop = bar.offsetHeight + "px";
+    }
+
+    // Service worker kaydı (PWA)
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => {
+          console.log("Service worker kayıtlı:", reg.scope);
+        })
+        .catch((err) => {
+          console.log("Service worker kaydı başarısız:", err);
+        });
+    }
+  });
+</script>
+
 
 </body>
 </html>
