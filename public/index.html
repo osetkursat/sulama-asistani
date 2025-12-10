@@ -242,10 +242,12 @@
       inset: 0;
       background: rgba(15, 23, 42, 0.55);
       display: flex;
-      align-items: center;
+      align-items: flex-start;  /* merkez yerine yukarıdan başlasın */
       justify-content: center;
-      z-index: 50;
-    }
+      padding-top: 16px;        /* biraz nefes alanı */
+      overflow-y: auto;         /* ekran küçülünce scroll edilebilsin */
+      z-index: 10000;           /* her şeyin ÜSTÜNDE olsun */
+}
     .wizard-container {
       width: 100%;
       max-width: 660px;
@@ -1226,10 +1228,14 @@ try {
         position: fixed;
         bottom: 0;
         left: 0;
-        z-index: 9999;
+        z-index: 10;
      ">
     🧪 <strong>Sulama Asistanı Beta Sürümü</strong> – Yapay zekâ desteklidir; zaman zaman hatalı veya eksik bilgiler verebilir. 
     Lütfen önerileri uygulamadan önce kontrol edin.
+    <button onclick="document.getElementById('beta-warning').style.display='none';"
+            style="margin-left:8px; background:none; border:none; text-decoration:underline; cursor:pointer; font-size:12px;">
+        Kapat
+    </button>
 </div>
 
 <script>
