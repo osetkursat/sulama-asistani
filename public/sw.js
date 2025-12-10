@@ -1,6 +1,6 @@
 // public/sw.js
 
-const CACHE_NAME = "sulama-asistani-v1";
+const CACHE_NAME = "sulama-asistani-v2";
 const OFFLINE_URLS = [
   "/",              // ana sayfa
   "/index.html",
