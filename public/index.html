@@ -8,7 +8,6 @@
   <!-- PDF için jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
-  <script src="C:\sulamaasistani\Roboto-normal.js"></script>
 
   <style>
     :root {
@@ -381,6 +380,7 @@
 </head>
 <body>
 
+  <!-- Üst Beta bar -->
   <div id="beta-warning" 
      style="
         width: 100%;
@@ -412,15 +412,10 @@
         ">
         Kapat
     </button>
-</div>
-
-
+  </div>
 
   <!-- Wizard -->
   <div class="wizard-overlay" id="wizardOverlay">
-    <!-- ... WIZARD İÇERİĞİN TAMAMI (SENDEN GELEN) BURADA AYNI KALIYOR ... -->
-    <!-- (Burayı senin mevcut dosyandaki gibi bırakıyorum, yukarıda zaten vardı) -->
-    <!-- AŞAĞIDAKİLER SENİN DOSYANDAN BİREBİR KOPYA -->
     <div class="wizard-container">
       <div class="wizard-header">
         <div class="wizard-header-left">
@@ -431,14 +426,116 @@
       </div>
 
       <div class="wizard-body">
+        <!-- SOL TARAF: SORULAR -->
         <form id="wizardForm">
-          <!-- ... BURADAKİ TÜM FORM ALANLARI SENDEKİYLE AYNI ... -->
-          <!-- KESMEMEK İÇİN KISALTMIYORUM; ZATEN ÜSTTE GÖNDERDİĞİM DOSYADA VAR -->
-          <!-- (Aynı içeriği koruyoruz) -->
-          <!-- Alan, şekil, su kaynağı, basınç, sistem tipi, otomasyon seçenekleri -->
-          <!-- ... -->
+          <!-- Alan -->
+          <div class="wizard-form-group">
+            <label for="areaRange">Alan (m²)</label>
+            <p class="wizard-sub">Tahmini alanı girmen yeterli, sonra sohbet içinde revize edebiliriz.</p>
+            <div class="wizard-range-row">
+              <input type="range" id="areaRange" min="50" max="2000" step="10" value="200" />
+              <div class="wizard-range-value">
+                <span id="areaValue">200</span> m²
+              </div>
+            </div>
+          </div>
+
+          <!-- Bahçe şekli -->
+          <div class="wizard-form-group">
+            <label>Bahçe şekli</label>
+            <div class="wizard-options" data-field="shape">
+              <div class="wizard-option active" data-value="dikdortgen">
+                <span class="label">Dikdörtgen</span><span class="tag">En yaygın</span>
+              </div>
+              <div class="wizard-option" data-value="L">
+                <span class="label">L şekilli</span><span class="tag">Köşe bahçe</span>
+              </div>
+              <div class="wizard-option" data-value="kare">
+                <span class="label">Kare</span><span class="tag">Basit plan</span>
+              </div>
+              <div class="wizard-option" data-value="serbest">
+                <span class="label">Serbest</span><span class="tag">Düzensiz</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Su kaynağı -->
+          <div class="wizard-form-group">
+            <label>Su kaynağı</label>
+            <div class="wizard-options" data-field="waterSource">
+              <div class="wizard-option active" data-value="sebekesu">
+                <span class="label">Şebeke suyu</span><span class="tag">Ev su hattı</span>
+              </div>
+              <div class="wizard-option" data-value="kuyu">
+                <span class="label">Kuyu</span><span class="tag">Dalgıç pompa</span>
+              </div>
+              <div class="wizard-option" data-value="depo">
+                <span class="label">Depo + hidrofor</span><span class="tag">Basınç kontrollü</span>
+              </div>
+              <div class="wizard-option" data-value="sondaj">
+                <span class="label">Sondaj</span><span class="tag">Yüksek debi</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Basınç -->
+          <div class="wizard-form-group">
+            <label>Çalışma basıncı</label>
+            <p class="wizard-sub">Bilmiyorsan “Bilmiyorum” seçili kalabilir. Sonradan netleştiririz.</p>
+            <div class="wizard-options" data-field="pressureMode">
+              <div class="wizard-option active" data-value="unknown" id="pressureUnknown">
+                <span class="label">Bilmiyorum</span><span class="tag">Varsayılan hesap</span>
+              </div>
+              <div class="wizard-option" data-value="known" id="pressureKnown">
+                <span class="label">Belli</span><span class="tag">Bar cinsinden</span>
+              </div>
+            </div>
+            <input
+              class="wizard-input"
+              type="number"
+              step="0.1"
+              min="0.5"
+              max="8"
+              id="pressureInput"
+              placeholder="Örn: 3.0 bar"
+              style="margin-top:6px; display:none;"
+            />
+          </div>
+
+          <!-- Sistem tipi -->
+          <div class="wizard-form-group">
+            <label>Sistem tipi</label>
+            <div class="wizard-options" data-field="systemType">
+              <div class="wizard-option active" data-value="sprink">
+                <span class="label">Sprink</span><span class="tag">Klasik çim</span>
+              </div>
+              <div class="wizard-option" data-value="rotor">
+                <span class="label">Rotor</span><span class="tag">Geniş alan</span>
+              </div>
+              <div class="wizard-option" data-value="damla">
+                <span class="label">Damla</span><span class="tag">Ağaç / çalı</span>
+              </div>
+              <div class="wizard-option" data-value="karisik">
+                <span class="label">Karışık</span><span class="tag">Sprink + damla</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Otomasyon -->
+          <div class="wizard-form-group">
+            <label>Otomasyon</label>
+            <div class="wizard-options" data-field="automation">
+              <div class="wizard-option active" data-value="evet">
+                <span class="label">Tam otomatik</span><span class="tag">Programlanabilir cihaz</span>
+              </div>
+              <div class="wizard-option" data-value="hayir">
+                <span class="label">Yarı otomatik / manuel</span><span class="tag">Musluk kontrollü</span>
+              </div>
+            </div>
+          </div>
         </form>
 
+        <!-- SAĞ TARAF: ÖZET -->
         <div class="wizard-mini-summary" id="wizardSummary">
           <h3>Özet</h3>
           <ul>
@@ -467,52 +564,409 @@
     </div>
   </div>
 
-  <!-- Uygulama -->
+  <!-- Ana Uygulama -->
   <div class="app-shell">
-    <!-- ... SENİN HEADER + CHAT + SAĞ PANEL KISMI HİÇ DEĞİŞMEDİ ... -->
-    <!-- Hepsini burada aynen koruyoruz (zaten mevcut dosyanda sorunsuz çalışıyordu) -->
-    <!-- (Üstte göndermiştim, dosyanın geri kalanı aynı kalsın diye tekrar yapıştırmıyorum) -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-logo">💧</div>
+        <div class="brand-text">
+          <h1>Sulama Asistanı</h1>
+          <p>Villa ve peyzaj bahçeleri için akıllı sulama danışmanı</p>
+        </div>
+      </div>
+      <div class="header-badge">
+        <span class="led"></span>
+        <span>Beta • Türkiye koşullarına göre hesaplama</span>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <section class="chat-section">
+        <div class="chat-header-line">
+          <div>
+            <div class="chat-title">
+              <span class="dot"></span>
+              <span>Sohbet Alanı</span>
+            </div>
+            <div class="chat-sub">Bahçeni, su kaynağını ve beklentini anlat; gerisini asistan halletsin.</div>
+          </div>
+        </div>
+
+        <div class="chat-window">
+          <div id="messages" class="messages"></div>
+          <div id="thinkingIndicator" class="thinking" style="display:none;">
+            <div class="thinking-dot"></div>
+            <div class="thinking-dot"></div>
+            <div class="thinking-dot"></div>
+            <span>Sulama Asistanı düşünüyor...</span>
+          </div>
+          <form id="chatForm" class="chat-input">
+            <input
+              id="userInput"
+              type="text"
+              autocomplete="off"
+              placeholder="Örn: 300 m² dikdörtgen bahçem var, şebeke suyu ile tam otomatik sistem istiyorum."
+            />
+            <button id="sendBtn" type="submit">Gönder ⮕</button>
+          </form>
+        </div>
+      </section>
+
+      <aside class="project-panel">
+        <div class="panel-header">
+          <h2>Proje Özeti</h2>
+        </div>
+
+        <div class="panel-section">
+          <h3>Bahçe Bilgileri</h3>
+          <div class="panel-grid">
+            <div class="panel-label">Alan</div>
+            <div class="panel-value" id="panelArea">200 m²</div>
+            <div class="panel-label">Şekil</div>
+            <div class="panel-value" id="panelShape">Dikdörtgen</div>
+            <div class="panel-label">Su kaynağı</div>
+            <div class="panel-value" id="panelWaterSource">Şebeke suyu</div>
+            <div class="panel-label">Sistem tipi</div>
+            <div class="panel-value" id="panelSystemType">Sprink</div>
+            <div class="panel-label">Otomasyon</div>
+            <div class="panel-value" id="panelAutomation">Tam otomatik</div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <h3>Tahmini Zone / Debi</h3>
+          <div class="panel-grid">
+            <div class="panel-label">Zone sayısı</div>
+            <div class="panel-value" id="panelZones">3</div>
+            <div class="panel-label">Tahmini debi</div>
+            <div class="panel-value" id="panelFlow">2,5 m³/saat</div>
+            <div class="panel-label">Ana boru çapı</div>
+            <div class="panel-value" id="panelMainPipe">32 mm</div>
+            <div class="panel-label">Lateral boru</div>
+            <div class="panel-value" id="panelLateralPipe">20 mm</div>
+          </div>
+          <p class="panel-note">Bu değerler, wizard bilgilerine göre ilk tahmindir; sohbet sırasında netleştirilir.</p>
+        </div>
+
+        <div class="panel-section">
+          <h3>Tahmini Maliyet</h3>
+          <div class="maliyet" id="panelCost">–</div>
+          <div class="maliyet-sub" id="panelCostNote">Malzeme listesi çıkarıldığında tahmini maliyet hesaplanır.</div>
+        </div>
+
+        <div class="panel-section">
+          <h3>Teklif / PDF</h3>
+          <button id="downloadOfferBtn" class="btn-primary" type="button" style="width:100%; justify-content:center;">
+            Teklif formunu indir (PDF)
+          </button>
+          <p class="panel-note">Önce bahçen için bir proje ve malzeme listesi oluştur; ardından PDF teklif al.</p>
+        </div>
+      </aside>
+    </main>
   </div>
 
-  <!-- ANA UYGULAMA SCRIPT'İN (SULAMA LOJİĞİ, PDF, CHAT, VS.) -->
+  <!-- JS -->
   <script>
-    /* BURAYA SENİN DOSYANDAKİ TÜM JS KODU (projectState, updateProjectPanel, chat, pdf vs.)
-       OLDUĞU GİBİ DURACAK. ZATEN ÇALIŞIYORDU, ORAYA DOKUNMUYORUM. */
-  </script>
-
-  <!-- Beta bar + PWA Service Worker script'i -->
-  <script>
-  // Beta bar kapatma fonksiyonu
-  function closeBetaWarning() {
-    const bar = document.getElementById("beta-warning");
-    if (bar) {
-      bar.style.display = "none";
-      document.body.style.paddingTop = "0px";
-    }
-  }
-
-  // Sayfa yüklendiğinde:
-  window.addEventListener("load", () => {
-    // Beta bar varsa, yüksekliği kadar yukarıdan boşluk ver
-    const bar = document.getElementById("beta-warning");
-    if (bar) {
-      document.body.style.paddingTop = bar.offsetHeight + "px";
+    // Beta bar kapatma
+    function closeBetaWarning() {
+      const bar = document.getElementById("beta-warning");
+      if (bar) {
+        bar.style.display = "none";
+        document.body.style.paddingTop = "0px";
+      }
     }
 
-    // Service worker kaydı (PWA)
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then((reg) => {
-          console.log("Service worker kayıtlı:", reg.scope);
-        })
-        .catch((err) => {
-          console.log("Service worker kaydı başarısız:", err);
+    // Global durum
+    const projectState = {
+      area: 200,
+      shape: "dikdortgen",
+      waterSource: "sebekesu",
+      systemType: "sprink",
+      automation: "evet",
+      pressureMode: "unknown",
+      pressureBar: null,
+    };
+
+    let conversationHistory = [];
+    let lastOfferData = null;
+
+    // DOM referansları
+    const wizardOverlay = document.getElementById("wizardOverlay");
+    const areaRange = document.getElementById("areaRange");
+    const areaValue = document.getElementById("areaValue");
+    const pressureInput = document.getElementById("pressureInput");
+    const skipWizardBtn = document.getElementById("skipWizardBtn");
+    const startChatBtn = document.getElementById("startChatBtn");
+
+    const summaryArea = document.getElementById("summaryArea");
+    const summaryShape = document.getElementById("summaryShape");
+    const summaryWaterSource = document.getElementById("summaryWaterSource");
+    const summarySystemType = document.getElementById("summarySystemType");
+    const summaryAutomation = document.getElementById("summaryAutomation");
+
+    const panelArea = document.getElementById("panelArea");
+    const panelShape = document.getElementById("panelShape");
+    const panelWaterSource = document.getElementById("panelWaterSource");
+    const panelSystemType = document.getElementById("panelSystemType");
+    const panelAutomation = document.getElementById("panelAutomation");
+    const panelZones = document.getElementById("panelZones");
+    const panelFlow = document.getElementById("panelFlow");
+    const panelMainPipe = document.getElementById("panelMainPipe");
+    const panelLateralPipe = document.getElementById("panelLateralPipe");
+    const panelCost = document.getElementById("panelCost");
+    const panelCostNote = document.getElementById("panelCostNote");
+    const downloadOfferBtn = document.getElementById("downloadOfferBtn");
+
+    const messagesDiv = document.getElementById("messages");
+    const chatForm = document.getElementById("chatForm");
+    const userInput = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const thinkingIndicator = document.getElementById("thinkingIndicator");
+
+    // Wizard alanı
+    areaRange.addEventListener("input", () => {
+      const val = Number(areaRange.value);
+      projectState.area = val;
+      areaValue.textContent = val;
+      summaryArea.textContent = val + " m² alan";
+      updateProjectPanel();
+    });
+
+    // Wizard seçenekleri
+    document.querySelectorAll(".wizard-options").forEach((group) => {
+      const field = group.dataset.field;
+      group.querySelectorAll(".wizard-option").forEach((opt) => {
+        opt.addEventListener("click", () => {
+          group.querySelectorAll(".wizard-option").forEach((o) => o.classList.remove("active"));
+          opt.classList.add("active");
+          const value = opt.dataset.value;
+
+          if (field === "shape") {
+            projectState.shape = value;
+            const labelMap = { dikdortgen: "Dikdörtgen bahçe", L: "L şekilli bahçe", kare: "Kare bahçe", serbest: "Serbest form" };
+            summaryShape.textContent = labelMap[value] || "Belirtilmemiş";
+          } else if (field === "waterSource") {
+            projectState.waterSource = value;
+            const labelMap = {
+              sebekesu: "Şebeke suyu",
+              kuyu: "Kuyu",
+              depo: "Depo + hidrofor",
+              sondaj: "Sondaj",
+            };
+            summaryWaterSource.textContent = labelMap[value] || "Belirtilmemiş";
+          } else if (field === "systemType") {
+            projectState.systemType = value;
+            const labelMap = {
+              sprink: "Sprink sistem",
+              rotor: "Rotor sistem",
+              damla: "Damla sulama",
+              karisik: "Karışık sistem",
+            };
+            summarySystemType.textContent = labelMap[value] || "Belirtilmemiş";
+          } else if (field === "automation") {
+            projectState.automation = value;
+            summaryAutomation.textContent = value === "evet" ? "Tam otomatik" : "Yarı otomatik / manuel";
+          } else if (field === "pressureMode") {
+            projectState.pressureMode = value;
+            if (value === "known") {
+              pressureInput.style.display = "block";
+            } else {
+              pressureInput.style.display = "none";
+              projectState.pressureBar = null;
+            }
+          }
+          updateProjectPanel();
         });
+      });
+    });
+
+    pressureInput.addEventListener("input", () => {
+      const v = Number(pressureInput.value);
+      projectState.pressureBar = isNaN(v) ? null : v;
+      updateProjectPanel();
+    });
+
+    // Paneli güncelle
+    function updateProjectPanel() {
+      panelArea.textContent = projectState.area + " m²";
+      const shapeMap = { dikdortgen: "Dikdörtgen", L: "L şekilli", kare: "Kare", serbest: "Serbest" };
+      panelShape.textContent = shapeMap[projectState.shape] || "Belirtilmemiş";
+
+      const waterMap = {
+        sebekesu: "Şebeke suyu",
+        kuyu: "Kuyu",
+        depo: "Depo + hidrofor",
+        sondaj: "Sondaj",
+      };
+      panelWaterSource.textContent = waterMap[projectState.waterSource] || "Belirtilmemiş";
+
+      const sysMap = { sprink: "Sprink", rotor: "Rotor", damla: "Damla", karisik: "Karışık" };
+      panelSystemType.textContent = sysMap[projectState.systemType] || "Belirtilmemiş";
+      panelAutomation.textContent = projectState.automation === "evet" ? "Tam otomatik" : "Yarı otomatik / manuel";
+
+      // Basit zone tahmini: 120 m² / zone
+      const approxZones = Math.max(1, Math.round(projectState.area / 120));
+      panelZones.textContent = approxZones.toString();
+
+      // Kabaca debi
+      const flow = (projectState.area / 80).toFixed(1);
+      panelFlow.textContent = flow + " m³/saat";
+
+      // Boru çapı
+      panelMainPipe.textContent = projectState.area > 350 ? "40 mm" : "32 mm";
+      panelLateralPipe.textContent = "20 mm";
     }
-  });
-</script>
 
+    updateProjectPanel();
 
+    // Wizard butonları
+    function openBetaBar() {
+      const bar = document.getElementById("beta-warning");
+      if (bar) {
+        bar.style.display = "flex";
+        document.body.style.paddingTop = bar.offsetHeight + "px";
+      }
+    }
+
+    startChatBtn.addEventListener("click", () => {
+      wizardOverlay.style.display = "none";
+      openBetaBar();
+      addMessage(
+        "assistant",
+        "Bahçe bilgilerini aldım. Alan: " +
+          projectState.area +
+          " m², şekil: " +
+          panelShape.textContent +
+          ", su kaynağı: " +
+          panelWaterSource.textContent +
+          ". Şimdi bu bilgilere göre zone planı, boru çapları ve malzeme listesini çıkarabiliriz. İstersen bahçenin özel durumlarını (ağaçlar, teras, eğim vb.) de yaz."
+      );
+      userInput.focus();
+    });
+
+    skipWizardBtn.addEventListener("click", () => {
+      wizardOverlay.style.display = "none";
+      openBetaBar();
+      addMessage(
+        "assistant",
+        "Hoş geldin. Bahçe alanını, su kaynağını ve otomasyon isteğini yazarsan; sana özel sulama projesi, malzeme listesi ve tahmini maliyet çıkaracağım."
+      );
+      userInput.focus();
+    });
+
+    // Mesaj ekleme
+    function addMessage(role, text) {
+      const wrap = document.createElement("div");
+      wrap.className = "message " + role;
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text;
+
+      wrap.appendChild(bubble);
+      messagesDiv.appendChild(wrap);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      conversationHistory.push({ role, content: text });
+    }
+
+    // Chat gönderme
+    chatForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = userInput.value.trim();
+      if (!text) return;
+
+      addMessage("user", text);
+      userInput.value = "";
+      sendBtn.disabled = true;
+      thinkingIndicator.style.display = "inline-flex";
+
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: text,
+            history: conversationHistory,
+            projectState,
+          }),
+        });
+
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+
+        const reply = data.reply || data.message || data.answer || "Sunucudan yanıt alındı ama metin bulunamadı.";
+        addMessage("assistant", reply);
+
+        if (data.projectState) {
+          Object.assign(projectState, data.projectState);
+          updateProjectPanel();
+        }
+        if (data.offerSummary) {
+          lastOfferData = data.offerSummary;
+          panelCost.textContent = data.offerSummary.totalText || data.offerSummary.total || "Güncellendi";
+          panelCostNote.textContent = data.offerSummary.note || "Teklif detayları güncellendi.";
+        }
+      } catch (err) {
+        console.error(err);
+        addMessage("assistant", "Sunucuyla bağlantıda bir sorun oluştu. Lütfen biraz sonra tekrar dene.");
+      } finally {
+        sendBtn.disabled = false;
+        thinkingIndicator.style.display = "none";
+      }
+    });
+
+    // Basit PDF
+    downloadOfferBtn.addEventListener("click", () => {
+      const { jsPDF } = window.jspdf || {};
+      if (!jsPDF) {
+        alert("PDF modülü yüklenemedi.");
+        return;
+      }
+
+      const doc = new jsPDF();
+
+      doc.setFontSize(14);
+      doc.text("Sulama Asistanı - Teklif Özeti", 14, 18);
+
+      doc.setFontSize(11);
+      doc.text("Bahçe Bilgileri:", 14, 30);
+      doc.text("Alan: " + projectState.area + " m²", 14, 36);
+      doc.text("Şekil: " + panelShape.textContent, 14, 42);
+      doc.text("Su kaynağı: " + panelWaterSource.textContent, 14, 48);
+      doc.text("Sistem tipi: " + panelSystemType.textContent, 14, 54);
+      doc.text("Otomasyon: " + panelAutomation.textContent, 14, 60);
+
+      doc.text("Zone sayısı: " + panelZones.textContent, 14, 70);
+      doc.text("Tahmini debi: " + panelFlow.textContent, 14, 76);
+      doc.text("Ana boru: " + panelMainPipe.textContent, 14, 82);
+      doc.text("Lateral boru: " + panelLateralPipe.textContent, 14, 88);
+
+      if (panelCost.textContent && panelCost.textContent !== "–") {
+        doc.text("Tahmini maliyet: " + panelCost.textContent, 14, 98);
+      }
+
+      doc.save("sulama-teklifi.pdf");
+    });
+
+    // Sayfa yüklendiğinde body padding + SW kaydı
+    window.addEventListener("load", () => {
+      const bar = document.getElementById("beta-warning");
+      if (bar) {
+        document.body.style.paddingTop = bar.offsetHeight + "px";
+      }
+
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((reg) => {
+            console.log("Service worker kayıtlı:", reg.scope);
+          })
+          .catch((err) => {
+            console.log("Service worker kaydı başarısız:", err);
+          });
+      }
+    });
+  </script>
 </body>
 </html>
