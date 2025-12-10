@@ -867,46 +867,77 @@ app.post("/export-pdf", (req, res) => {
   doc.end();
 });
 
-// ------------------------------------------------------
-// Admin API
-// ------------------------------------------------------
 
-// POST /admin/update-user
-app.post("/admin/update-user", requireAdmin, (req, res) => {
-  const { email, limit, resetUsed, resetMemory } = req.body || {};
-
-  if (!email) {
-    return res.status(400).json({ error: "email zorunlu." });
+function loadUsersFile() {
+  try {
+    return JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
+  } catch (e) {
+    return [];
   }
+}
 
-  let users = loadUsers();
-  const user = users.find((u) => u.email === email);
-  if (!user) {
-    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+function saveUsersFile(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
+}
+
+// Admin doğrulama middleware
+function checkAdmin(req, res, next) {
+  const key = req.headers["x-admin-key"];
+  if (!key || key !== ADMIN_KEY) {
+    return res.status(401).json({ error: "Yetkisiz" });
   }
+  next();
+}
+
+// 1) Kullanıcı listesini getir
+app.get("/admin/users", checkAdmin, (req, res) => {
+  const all = loadUsersFile();
+
+  const mapped = all.map(u => ({
+    email: u.email,
+    used: u.used || 0,
+    limit: u.limit || 20,
+    remaining: (u.limit || 20) - (u.used || 0),
+    memoryCount: (u.memory || []).length
+  }));
+
+  res.json({ users: mapped });
+});
+
+// 2) Kullanıcı güncelle
+app.post("/admin/update-user", checkAdmin, (req, res) => {
+  const { email, limit, resetUsed, resetMemory } = req.body;
+  if (!email) return res.status(400).json({ error: "E-posta eksik." });
+
+  const all = loadUsersFile();
+  const idx = all.findIndex(u => u.email === email);
+  if (idx === -1) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
 
   if (typeof limit === "number") {
-    user.limit = limit;
+    all[idx].limit = limit;
   }
-
   if (resetUsed) {
-    user.used = 0;
+    all[idx].used = 0;
   }
-
   if (resetMemory) {
-    user.memory = [];
+    all[idx].memory = [];
   }
 
-  saveUsers(users);
+  saveUsersFile(all);
 
-  return res.json({
+  const updated = all[idx];
+  res.json({
     success: true,
-    email: user.email,
-    limit: user.limit,
-    used: user.used,
-    remaining: user.limit - user.used,
+    user: {
+      email: updated.email,
+      used: updated.used || 0,
+      limit: updated.limit || 20,
+      remaining: (updated.limit || 20) - (updated.used || 0),
+      memoryCount: (updated.memory || []).length
+    }
   });
 });
+
 
 // ------------------------------------------------------
 // POST /api/sulama – JSON cevap (chat + proje paneli için)
@@ -1196,6 +1227,96 @@ K_FACTORS = ${JSON.stringify(K_FACTORS)};
       .json({ error: "Sunucu hatası: Asistan şu anda yanıt veremiyor." });
   }
 });
+
+// -------------------------------------------
+// ADMIN API BLOĞU
+// -------------------------------------------
+
+
+// Kullanıcı dosyasını oku
+function loadUsersFile() {
+  try {
+    return JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
+  } catch (e) {
+    return [];
+  }
+}
+
+// Kullanıcı dosyasını kaydet
+function saveUsersFile(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
+}
+
+// Admin doğrulama middleware
+function checkAdmin(req, res, next) {
+  const key = req.headers["x-admin-key"];
+  if (!key || key !== ADMIN_KEY) {
+    return res.status(401).json({ error: "Yetkisiz" });
+  }
+  next();
+}
+
+// Tüm kullanıcıları getir
+app.get("/admin/users", checkAdmin, (req, res) => {
+  const all = loadUsersFile();
+
+  const mapped = all.map(u => ({
+    email: u.email,
+    used: u.used || 0,
+    limit: u.limit || 20,
+    remaining: (u.limit || 20) - (u.used || 0),
+    memoryCount: (u.memory || []).length
+  }));
+
+  res.json({ users: mapped });
+});
+
+// Kullanıcı limiti / kullanım / hafıza güncelle
+app.post("/admin/update-user", checkAdmin, (req, res) => {
+  const { email, limit, resetUsed, resetMemory } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: "E-posta eksik." });
+  }
+
+  const all = loadUsersFile();
+  const idx = all.findIndex(u => u.email === email);
+
+  if (idx === -1) {
+    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+  }
+
+  // Limit güncelle
+  if (typeof limit === "number") {
+    all[idx].limit = limit;
+  }
+
+  // Kullanımı sıfırla
+  if (resetUsed) {
+    all[idx].used = 0;
+  }
+
+  // Hafızayı sıfırla
+  if (resetMemory) {
+    all[idx].memory = [];
+  }
+
+  saveUsersFile(all);
+
+  const updated = all[idx];
+
+  res.json({
+    success: true,
+    user: {
+      email: updated.email,
+      used: updated.used || 0,
+      limit: updated.limit || 20,
+      remaining: (updated.limit || 20) - (updated.used || 0),
+      memoryCount: (updated.memory || []).length
+    }
+  });
+});
+
 
 // ------------------------------------------------------
 // Sunucu başlat
