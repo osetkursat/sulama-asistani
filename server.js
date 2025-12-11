@@ -175,32 +175,92 @@ function findOrCreateUserByEmail(email) {
   return u;
 }
 
+  // ------------------------------------------------------
+// Google OAuth (opsiyonel)
 // ------------------------------------------------------
-// Google OAuth Strategy
-// ------------------------------------------------------
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "/auth/google/callback",
-    },
-    (accessToken, refreshToken, profile, done) => {
-      try {
-        const email =
-          profile.emails && profile.emails[0] && profile.emails[0].value;
-        if (!email) {
-          return done(new Error("Google hesabında e-posta bulunamadı"));
-        }
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
+const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || "";
 
-        const user = findOrCreateUserByEmail(email.toLowerCase());
-        return done(null, user);
-      } catch (err) {
-        return done(err);
+const hasGoogleOAuth =
+  GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_CALLBACK_URL;
+
+if (hasGoogleOAuth) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: GOOGLE_CLIENT_ID,
+        clientSecret: GOOGLE_CLIENT_SECRET,
+        callbackURL: GOOGLE_CALLBACK_URL,
+      },
+      (accessToken, refreshToken, profile, done) => {
+        try {
+          const email =
+            profile?.emails && profile.emails[0] && profile.emails[0].value;
+          if (!email) {
+            return done(new Error("Google hesabında e-posta bulunamadı."));
+          }
+
+          const users = loadUsers();
+          const cleanEmail = email.trim().toLowerCase();
+
+          let user = users.find((u) => u.email === cleanEmail);
+          if (!user) {
+            user = {
+              email: cleanEmail,
+              used: 0,
+              limit: 30,
+              memoryCount: 0,
+            };
+            users.push(user);
+            saveUsers(users);
+          }
+
+          return done(null, user);
+        } catch (err) {
+          return done(err);
+        }
       }
+    )
+  );
+
+  // Google giriş rotaları
+  app.get(
+    "/auth/google",
+    passport.authenticate("google", { scope: ["profile", "email"] })
+  );
+
+  app.get(
+    "/auth/google/callback",
+    passport.authenticate("google", {
+      failureRedirect: "/login",
+      session: true,
+    }),
+    (req, res) => {
+      const email = req.user?.email || "";
+      const redirectUrl = "/?googleEmail=" + encodeURIComponent(email);
+      res.redirect(redirectUrl);
     }
-  )
-);
+  );
+
+  console.log("Google OAuth etkin.");
+} else {
+  console.warn(
+    "Google OAuth devre dışı: GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_CALLBACK_URL tanımlı değil."
+  );
+
+  // Rotalar dursun ama hata vermesin
+  app.get("/auth/google", (req, res) => {
+    res
+      .status(503)
+      .send("Google ile giriş bu sunucuda devre dışı (env tanımlı değil).");
+  });
+
+  app.get("/auth/google/callback", (req, res) => {
+    res.redirect("/login");
+  });
+}
+
 
 
 // ------------------------------------------------------
