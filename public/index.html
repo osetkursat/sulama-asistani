@@ -1477,14 +1477,12 @@
           addMessage("assistant", reply);
         })
         .catch(function (err) {
-          console.error("İstek hatası:", err);
-          if (!chatLocked) {
-            addMessage(
-              "assistant",
-              "Sunucuyla bağlantıda bir sorun oluştu. Lütfen biraz sonra tekrar dene."
-            );
-          }
-        })
+    console.error("İstek hatası:", err);
+    addMessage(
+      "assistant",
+      "Sunucuyla bağlantıda bir sorun oluştu. Lütfen biraz sonra tekrar dene."
+    );
+  })
         .finally(function () {
           setInputDisabled(false);
           setThinking(false);
