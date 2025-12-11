@@ -1095,7 +1095,8 @@ app.post("/api/sulama", async (req, res) => {
   const systemPrompt = buildSystemPrompt();
 
   const messages = [
-  { role: "system", content: STEP_CONTROLLER },
+  { role: "system", content: JSON.stringify(STEP_CONTROLLER) },
+
   { role: "system", content: systemPrompt }
 ];
 
@@ -1119,7 +1120,11 @@ app.post("/api/sulama", async (req, res) => {
     });
   }
 
-  messages.push({ role: "user", content: message });
+  messages.push({
+  role: "user",
+  content: JSON.stringify({ soru: message, email: user.email })
+});
+
 
   // Kullanım arttır
   currentUser.used += 1;
