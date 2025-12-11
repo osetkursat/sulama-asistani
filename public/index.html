@@ -2,970 +2,1557 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <title>Sulama Asistanı</title>
+  <title>Sulama Asistanı – Beta</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- PDF için jsPDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+  <!-- Manifest ve ikon (zorunlu değil, klasörde ikon yoksa console'da uyarı çıkar, çalışmayı bozmaz) -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/png" href="/icons/icon-192.png" />
 
   <style>
     :root {
-      --bg: #f3f6fb;
-      --bg-alt: #ffffff;
-      --primary: #1b8a5a;
-      --primary-soft: #e1f5ec;
-      --border: #d4dce8;
-      --text: #1c2533;
-      --text-soft: #6b7280;
-      --radius-lg: 18px;
-      --radius-md: 12px;
-      --shadow-soft: 0 14px 35px rgba(15, 23, 42, 0.12);
-      --shadow-light: 0 8px 20px rgba(15, 23, 42, 0.08);
+      --bg: #0f172a;
+      --bg-elevated: #020617;
+      --bg-chat: #020617;
+      --accent: #22c55e;
+      --accent-soft: rgba(34, 197, 94, 0.1);
+      --accent-border: #16a34a;
+      --accent-strong: #4ade80;
+      --danger: #f97373;
+      --text: #e5e7eb;
+      --text-soft: #9ca3af;
+      --text-softer: #6b7280;
+      --border-subtle: #1f2937;
+      --border-strong: #374151;
+      --shadow-soft: 0 20px 50px rgba(15, 23, 42, 0.9);
+      --shadow-chip: 0 10px 25px rgba(15, 23, 42, 0.7);
+      --radius-xl: 20px;
+      --radius-full: 999px;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top left, #e0f7f4, #f3f6fb);
+      height: 100%;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 0% 0%, #052e16, #020617 40%, #000),
+        radial-gradient(circle at 100% 100%, #0f172a, #020617 50%, #000);
       color: var(--text);
-      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
       display: flex;
       align-items: stretch;
       justify-content: center;
+      padding: 16px;
     }
+
     .app-shell {
       max-width: 1200px;
       width: 100%;
-      margin: 24px;
-      background: linear-gradient(135deg, #f9fafb, #eef2ff);
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .top-row {
+      display: flex;
+      gap: 16px;
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    @media (min-width: 1024px) {
+      .top-row {
+        flex-direction: row;
+      }
+    }
+
+    .card {
+      background: radial-gradient(circle at 0 0, #0f172a 0, #020617 35%, #000)
+          padding-box,
+        linear-gradient(135deg, rgba(34, 197, 94, 0.5), rgba(15, 23, 42, 0.9))
+          border-box;
+      border: 1px solid transparent;
       border-radius: 24px;
+      padding: 20px 20px 18px;
       box-shadow: var(--shadow-soft);
-      display: flex;
-      flex-direction: column;
+      position: relative;
       overflow: hidden;
-      border: 1px solid rgba(148, 163, 184, 0.25);
     }
-    header.app-header {
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      background: radial-gradient(
+        circle at 0 0,
+        rgba(34, 197, 94, 0.20),
+        transparent 45%
+      );
+      opacity: 0.65;
+      pointer-events: none;
+    }
+
+    .card-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 16px 22px;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
-      background: linear-gradient(120deg, #0f766e, #16a34a);
-      color: white;
-    }
-    .brand { display: flex; align-items: center; gap: 10px; }
-    .brand-logo {
-      width: 34px; height: 34px; border-radius: 12px;
-      background: radial-gradient(circle at 30% 20%, #bbf7d0, #22c55e);
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 800; font-size: 18px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
-    }
-    .brand-text h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.02em; }
-    .brand-text p { font-size: 12px; opacity: 0.85; }
-    .header-badge {
-      font-size: 12px; padding: 6px 12px; border-radius: 999px;
-      background: rgba(15, 23, 42, 0.2);
-      border: 1px solid rgba(226, 232, 240, 0.6);
-      display: flex; align-items: center; gap: 6px;
-    }
-    .header-badge span.led {
-      width: 8px; height: 8px; border-radius: 999px;
-      background: #22c55e;
-      box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.35);
-    }
-    main.app-main {
-      display: grid;
-      grid-template-columns: 1.6fr 1fr;
-      min-height: 520px;
-    }
-    @media (max-width: 960px) {
-      main.app-main { grid-template-columns: 1fr; }
-      .project-panel { border-left: none; border-top: 1px solid var(--border); }
-    }
-    .chat-section {
-      display: flex; flex-direction: column;
-      padding: 16px;
-      background: radial-gradient(circle at top, #e5f9f3, #eef2ff);
-    }
-    .chat-header-line {
-      display: flex; justify-content: space-between; align-items: center;
       margin-bottom: 10px;
+      position: relative;
+      z-index: 1;
     }
-    .chat-title {
-      font-size: 14px; font-weight: 600;
-      display: flex; gap: 8px; align-items: center; color: #0f172a;
-    }
-    .chat-title span.dot {
-      width: 8px; height: 8px; border-radius: 999px; background: #22c55e;
-    }
-    .chat-sub { font-size: 12px; color: var(--text-soft); }
-    .chat-window {
-      flex: 1;
-      border-radius: var(--radius-lg);
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid rgba(148, 163, 184, 0.3);
-      box-shadow: var(--shadow-light);
-      padding: 12px;
+
+    .auth-buttons {
       display: flex;
-      flex-direction: column;
-      gap: 10px;
-      max-height: 580px;
+      gap: 8px;
+      align-items: center;
+      margin-left: 12px;
     }
-    .messages { flex: 1; overflow-y: auto; padding-right: 4px; scroll-behavior: smooth; }
-    .message { max-width: 90%; margin-bottom: 8px; display: flex; gap: 8px; }
-    .message.assistant { justify-content: flex-start; }
-    .message.user { justify-content: flex-end; }
-    .bubble {
-      padding: 8px 11px;
-      border-radius: 14px;
-      font-size: 13px;
-      line-height: 1.4;
-      word-break: break-word;
+
+    .auth-btn {
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      background: rgba(15, 23, 42, 0.95);
+      color: var(--text-soft);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.15s ease-out;
+      white-space: nowrap;
+      cursor: pointer;
     }
-    .assistant .bubble {
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
-      border-bottom-left-radius: 4px;
-      color: #0f172a;
+
+    .auth-btn.primary {
+      border-color: rgba(34, 197, 94, 0.8);
+      color: var(--accent-strong);
+      box-shadow: 0 6px 16px rgba(22, 163, 74, 0.5);
     }
-    .user .bubble {
-      background: #16a34a;
-      color: white;
-      border-bottom-right-radius: 4px;
+
+    .auth-btn:hover {
+      border-color: rgba(34, 197, 94, 0.8);
+      color: var(--accent-strong);
+      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.5),
+        0 8px 18px rgba(22, 163, 74, 0.35);
+      transform: translateY(-0.5px);
     }
-    .thinking {
-      display: inline-flex; align-items: center; gap: 6px;
-      font-size: 12px; color: var(--text-soft);
-      padding: 4px 8px; border-radius: 999px;
-      background: #e5f3ff; margin-top: 2px;
+
+    .auth-btn:active {
+      transform: translateY(0.5px);
+      box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
     }
-    .thinking-dot {
-      width: 6px; height: 6px; border-radius: 999px;
-      background: #38bdf8;
-      animation: pulse 1.2s infinite ease-in-out;
+
+    @media (max-width: 768px) {
+      .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      .auth-buttons {
+        align-self: stretch;
+        justify-content: flex-start;
+      }
     }
-    .thinking-dot:nth-child(2) { animation-delay: 0.15s; }
-    .thinking-dot:nth-child(3) { animation-delay: 0.3s; }
-    @keyframes pulse {
-      0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
-      40% { transform: scale(1.1); opacity: 1; }
+
+    .badge-beta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 4px 10px 4px 4px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.9), var(--shadow-chip);
     }
-    .chat-input {
-      display: flex; align-items: center; gap: 8px;
-      margin-top: 8px; padding-top: 8px;
-      border-top: 1px solid rgba(148, 163, 184, 0.3);
-    }
-    .chat-input input[type="text"] {
-      flex: 1; padding: 9px 10px; border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.7);
-      font-size: 13px; outline: none; background: #f9fafb;
-    }
-    .chat-input input[type="text"]:focus {
-      border-color: #16a34a;
-      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.25);
-      background: #ffffff;
-    }
-    .chat-input button {
-      border: none; padding: 9px 14px; border-radius: 999px;
-      font-size: 13px; font-weight: 600; cursor: pointer;
-      background: linear-gradient(135deg, #16a34a, #22c55e);
-      color: white; display: inline-flex; align-items: center; gap: 6px;
-      box-shadow: 0 10px 18px rgba(22, 163, 74, 0.35);
-    }
-    .chat-input button:disabled {
-      opacity: 0.6; cursor: not-allowed; box-shadow: none;
-    }
-    .project-panel {
-      padding: 14px 16px;
-      background: #f8fafc;
-      border-left: 1px solid rgba(148, 163, 184, 0.35);
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .panel-header {
+
+    .badge-beta-pill {
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 20%, #bbf7d0, #22c55e);
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 6px;
+      justify-content: center;
+      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.6),
+        0 8px 16px rgba(21, 128, 61, 0.7);
+      position: relative;
+      overflow: hidden;
     }
-    .panel-header h2 { font-size: 14px; font-weight: 600; color: #0f172a; }
-    .panel-header button {
-      border: none;
-      background: rgba(15, 118, 110, 0.06);
-      color: #0369a1;
+
+    .badge-beta-pill span {
+      font-size: 11px;
+      font-weight: 800;
+      color: #052e16;
+      text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+    }
+
+    .badge-beta-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.1;
+    }
+
+    .badge-beta-text strong {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent-strong);
+    }
+
+    .badge-beta-text span {
+      font-size: 10px;
+      color: var(--text-soft);
+    }
+
+    .title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .title-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .app-title {
+      font-size: 20px;
+      font-weight: 650;
+      letter-spacing: 0.02em;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .app-title span.logo-dot {
+      display: inline-flex;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 20%, #bbf7d0, #22c55e);
+      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.6),
+        0 6px 14px rgba(22, 163, 74, 0.7);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .app-title span.logo-dot::after {
+      content: "";
+      position: absolute;
+      inset: 32%;
+      border-radius: inherit;
+      border: 1px solid rgba(22, 163, 74, 0.4);
+      box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.5);
+      opacity: 0.9;
+    }
+
+    .app-subtitle {
+      font-size: 12px;
+      color: var(--text-soft);
+      max-width: 480px;
+    }
+
+    .app-subtitle strong {
+      color: var(--accent-strong);
+      font-weight: 500;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .chip {
+      font-size: 11px;
       border-radius: 999px;
       padding: 4px 10px;
-      font-size: 11px;
-      cursor: pointer;
-      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      color: var(--text-soft);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: var(--shadow-chip);
     }
-    .panel-section {
-      background: white;
+
+    .chip span.dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .chip span.dot.red {
+      background: #f97373;
+    }
+
+    .chip span.dot.amber {
+      background: #facc15;
+    }
+
+    .chip span.dot.blue {
+      background: #38bdf8;
+    }
+
+    .chip strong {
+      color: var(--accent-strong);
+      font-weight: 500;
+    }
+
+    .chip-muted {
+      opacity: 0.9;
+    }
+
+    .imits-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-softer);
+    }
+
+    .limits-row span.highlight {
+      color: var(--accent-strong);
+    }
+
+    .limits-row strong {
+      color: var(--text-soft);
+      font-weight: 500;
+    }
+
+    .chat-layout {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      position: relative;
+      z-index: 1;
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    @media (min-width: 1024px) {
+      .chat-layout {
+        flex-direction: row;
+      }
+    }
+
+    .chat-panel {
+      flex: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .messages-container {
+      background: radial-gradient(
+            circle at 0% 0%,
+            rgba(34, 197, 94, 0.08),
+            transparent 60%
+          )
+          padding-box,
+        linear-gradient(
+            to bottom,
+            rgba(15, 23, 42, 0.95),
+            rgba(15, 23, 42, 0.98),
+            #020617
+          )
+          border-box;
+      border-radius: 18px;
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      padding: 10px 12px 12px;
+      min-height: 300px;
+      max-height: 520px;
+      overflow-y: auto;
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.9);
+    }
+
+    .messages-container::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .messages-container::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.95);
+      border-radius: 999px;
+    }
+
+    .messages-container::-webkit-scrollbar-thumb {
+      background: rgba(31, 41, 55, 0.95);
+      border-radius: 999px;
+    }
+
+    .message {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 8px;
+      position: relative;
+    }
+
+    .message:last-child {
+      margin-bottom: 0;
+    }
+
+    .message-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .message-icon.user {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      color: var(--text);
+    }
+
+    .message-icon.assistant {
+      background: radial-gradient(circle at 30% 20%, #bbf7d0, #22c55e);
+      border: 1px solid rgba(22, 163, 74, 0.9);
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.95),
+        0 8px 16px rgba(22, 163, 74, 0.8);
+      color: #022c22;
+    }
+
+    .message-bubble {
       border-radius: 14px;
       padding: 8px 10px;
-      border: 1px solid rgba(148, 163, 184, 0.35);
-      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+      font-size: 13px;
+      line-height: 1.6;
+      max-width: 100%;
+      position: relative;
+      border: 1px solid transparent;
+    }
+
+    .message.user .message-bubble {
+      background: radial-gradient(
+            circle at 80% 0%,
+            rgba(34, 197, 94, 0.08),
+            transparent 50%
+          )
+          padding-box,
+        linear-gradient(
+            135deg,
+            rgba(31, 41, 55, 0.98),
+            rgba(15, 23, 42, 0.98)
+          )
+          border-box;
+      border-color: rgba(55, 65, 81, 0.9);
+    }
+
+    .message.assistant .message-bubble {
+      background: radial-gradient(
+            circle at 0% 0%,
+            rgba(34, 197, 94, 0.12),
+            transparent 50%
+          )
+          padding-box,
+        linear-gradient(
+            135deg,
+            rgba(15, 23, 42, 0.98),
+            rgba(15, 23, 42, 0.99)
+          )
+          border-box;
+      border-color: rgba(31, 41, 55, 0.9);
+    }
+
+    .message.assistant.system-warning .message-bubble {
+      border-color: rgba(248, 113, 113, 0.9);
+      background: linear-gradient(
+        135deg,
+        rgba(127, 29, 29, 0.9),
+        rgba(15, 23, 42, 0.98)
+      );
+    }
+
+    .message-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 3px;
+      gap: 8px;
+    }
+
+    .message-meta {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .message-role {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-soft);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .message.assistant .message-role {
+      color: var(--accent-strong);
+    }
+
+    .message-timestamp {
+      font-size: 10px;
+      color: var(--text-softer);
+    }
+
+    .message.model-tag {
+      font-size: 10px;
+      color: var(--text-softer);
+      margin-left: auto;
+    }
+
+    .message-content p + p {
+      margin-top: 6px;
+    }
+
+    .message-content ul,
+    .message-content ol {
+      padding-left: 18px;
+      margin: 4px 0;
+    }
+
+    .message-content li {
+      margin: 2px 0;
+    }
+
+    .message-content code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+      background: rgba(15, 23, 42, 0.9);
+      padding: 2px 4px;
+      border-radius: 4px;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+    }
+
+    .message-content pre {
+      background: rgba(15, 23, 42, 0.95);
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      overflow-x: auto;
+      font-size: 11px;
+      margin: 4px 0;
+    }
+
+    .thinking-indicator {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-softer);
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      width: fit-content;
+      margin: 4px 0 0 40px;
+      box-shadow: var(--shadow-chip);
+    }
+
+    .thinking-balls {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .thinking-balls span {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--accent-strong);
+      opacity: 0.8;
+      animation: pulse 1.4s infinite ease-in-out both;
+    }
+
+    .thinking-balls span:nth-child(2) {
+      animation-delay: -0.16s;
+    }
+
+    .thinking-balls span:nth-child(3) {
+      animation-delay: -0.32s;
+    }
+
+    .thinking-text {
+      white-space: nowrap;
+    }
+
+    @keyframes pulse {
+      0%,
+      80%,
+      100% {
+        transform: scale(0.6);
+        opacity: 0.5;
+      }
+      40% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .input-panel {
+      margin-top: 4px;
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      padding: 10px 10px 8px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.8);
+    }
+
+    .question-helpers {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
       margin-bottom: 6px;
     }
-    .panel-section h3 { font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #0f172a; }
-    .panel-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 4px 8px;
-      font-size: 11px;
-    }
-    .panel-label { color: var(--text-soft); }
-    .panel-value { font-weight: 600; color: #111827; }
-    .pill {
-      display: inline-flex;
-      padding: 3px 7px;
-      border-radius: 999px;
-      font-size: 10px;
-      margin: 2px 2px 0 0;
-      border: 1px solid rgba(148, 163, 184, 0.6);
-      background: #f1f5f9;
-    }
-    .maliyet { font-size: 20px; font-weight: 700; color: #0f766e; }
-    .maliyet-sub { font-size: 11px; color: var(--text-soft); }
-    .panel-note { font-size: 11px; color: var(--text-soft); margin-top: 4px; }
 
-    .wizard-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.55);
+    .helper-chip {
+      font-size: 11px;
+      line-height: 1.2;
+      border-radius: 999px;
+      padding: 4px 9px;
+      background: rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      color: var(--text-soft);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease-out;
+    }
+
+    .helper-chip strong {
+      color: var(--accent-strong);
+      font-weight: 500;
+    }
+
+    .helper-chip:hover {
+      border-color: rgba(34, 197, 94, 0.6);
+      color: var(--accent-strong);
+      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.5),
+        0 8px 20px rgba(22, 163, 74, 0.35);
+      transform: translateY(-0.5px);
+    }
+
+    .helper-chip:active {
+      transform: translateY(0.5px);
+      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.5),
+        0 3px 10px rgba(22, 163, 74, 0.3);
+    }
+
+    .helper-chip span.bullet {
+      width: 4px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .input-row {
       display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding-top: 16px;
-      overflow-y: auto;
-      z-index: 10000;
+      align-items: flex-end;
+      gap: 8px;
     }
-    .wizard-container {
-      width: 100%;
-      max-width: 660px;
-      background: #f9fafb;
-      border-radius: 22px;
-      padding: 18px 20px 16px;
-      box-shadow: 0 24px 55px rgba(15, 23, 42, 0.45);
-      border: 1px solid rgba(148, 163, 184, 0.6);
+
+    .input-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
-    .wizard-header {
+
+    .input-label-row {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 10px;
-    }
-    .wizard-header-left h2 { font-size: 18px; margin-bottom: 4px; color: #0f172a; }
-    .wizard-header-left p { font-size: 12px; color: var(--text-soft); }
-    .wizard-step-badges {
       font-size: 11px;
-      padding: 3px 7px;
-      border-radius: 999px;
-      background: #e5f3ff;
-      border: 1px solid rgba(59, 130, 246, 0.4);
-      height: fit-content;
+      color: var(--text-softer);
+      padding: 0 2px;
     }
-    .wizard-body {
-      display: grid;
-      grid-template-columns: 1.4fr 1fr;
-      gap: 12px;
-      margin-bottom: 8px;
+
+    .input-label-row strong {
+      color: var(--text-soft);
+      font-weight: 500;
     }
-    @media (max-width: 768px) {
-      .wizard-body { grid-template-columns: 1fr; }
+
+    .textarea-wrapper {
+      position: relative;
     }
-    .wizard-form-group { margin-bottom: 8px; }
-    .wizard-form-group label {
-      font-size: 12px; font-weight: 600;
-      display: block; margin-bottom: 4px; color: #111827;
-    }
-    .wizard-sub { font-size: 11px; color: var(--text-soft); margin-bottom: 4px; }
-    .wizard-input {
-      width: 100%; padding: 6px 8px; border-radius: 10px;
-      border: 1px solid rgba(148, 163, 184, 0.8);
-      font-size: 12px; outline: none; background: #f9fafb;
-    }
-    .wizard-range-row { display: flex; align-items: center; gap: 8px; }
-    .wizard-range-row input[type="range"] { flex: 1; }
-    .wizard-range-value {
-      font-size: 12px; font-weight: 600;
-      padding: 4px 8px; border-radius: 999px;
-      background: #e5f3ff; border: 1px solid rgba(59, 130, 246, 0.4);
-    }
-    .wizard-options {
-      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px;
-    }
-    .wizard-option {
-      flex: 1 1 calc(50% - 6px);
-      min-width: 90px;
+
+    #userInput {
+      width: 100%;
+      min-height: 48px;
+      max-height: 120px;
+      resize: vertical;
+      padding: 8px 36px 8px 10px;
       border-radius: 12px;
-      border: 1px solid rgba(148, 163, 184, 0.7);
-      padding: 6px 7px;
-      font-size: 11px;
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      background: rgba(15, 23, 42, 0.98);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.5;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out,
+        background 0.15s ease-out;
+    }
+
+    #userInput::placeholder {
+      color: var(--text-softer);
+    }
+
+    #userInput:focus {
+      border-color: rgba(34, 197, 94, 0.7);
+      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.5),
+        0 0 0 2px rgba(21, 128, 61, 0.4);
+      background: rgba(15, 23, 42, 0.98);
+    }
+
+    .input-counter {
+      font-size: 10px;
+      color: var(--text-softer);
+      text-align: right;
+      padding: 0 4px;
+    }
+
+    .send-button {
+      border-radius: 14px;
+      padding: 8px 14px;
+      border: none;
       cursor: pointer;
-      background: #f8fafc;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-width: 48px;
+      background: linear-gradient(
+        135deg,
+        #22c55e,
+        #16a34a,
+        #22c55e,
+        #4ade80
+      );
+      background-size: 200% 200%;
+      color: #052e16;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(22, 163, 74, 0.6);
+      transition: transform 0.12s ease-out, box-shadow 0.12s ease-out,
+        background-position 0.3s ease-out, opacity 0.2s ease-out;
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .send-button span.icon {
+      font-size: 15px;
+      display: inline-flex;
+      transform-origin: center;
+      transition: transform 0.1s ease-out;
+    }
+
+    .send-button span.text {
+      display: inline-block;
+    }
+
+    .send-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 30px rgba(22, 163, 74, 0.7);
+      background-position: 100% 0;
+    }
+
+    .send-button:hover span.icon {
+      transform: translateX(2px);
+    }
+
+    .send-button:active {
+      transform: translateY(0);
+      box-shadow: 0 8px 18px rgba(22, 163, 74, 0.5);
+    }
+
+    .send-button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.9);
+      background: linear-gradient(
+        135deg,
+        #15803d,
+        #166534,
+        #15803d
+      );
+      background-size: 100% 100%;
+    }
+
+    .send-key-hint {
+      font-size: 10px;
+      color: var(--text-softer);
+      text-align: center;
+      margin-top: 3px;
+    }
+
+    .right-panel {
+      flex: 1.4;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 280px;
+      max-width: 380px;
+    }
+
+    .right-panel-card {
+      background: radial-gradient(
+            circle at 100% 0%,
+            rgba(34, 197, 94, 0.16),
+            transparent 60%
+          )
+          padding-box,
+        linear-gradient(
+            135deg,
+            rgba(15, 23, 42, 0.98),
+            rgba(15, 23, 42, 0.99)
+          )
+          border-box;
+      border-radius: 18px;
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      padding: 12px 12px 10px;
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.95);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .right-panel-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(
+        circle at 100% 0%,
+        rgba(34, 197, 94, 0.16),
+        transparent 60%
+      );
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .right-panel-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .right-panel-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .right-panel-title span.dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.7);
+    }
+
+    .right-panel-subtitle {
+      font-size: 11px;
+      color: var(--text-softer);
+      margin-bottom: 4px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .example-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .example-item {
+      border-radius: 12px;
+      padding: 7px 8px;
+      font-size: 12px;
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      background: rgba(15, 23, 42, 0.98);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .example-item strong {
+      color: var(--accent-strong);
+      font-weight: 500;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .example-item span {
+      color: var(--text-soft);
+      font-size: 12px;
+    }
+
+    .usage-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-    }
-    .wizard-option span.label { font-weight: 500; }
-    .wizard-option span.tag { font-size: 10px; color: var(--text-soft); }
-    .wizard-option.active {
-      background: #dcfce7;
-      border-color: #16a34a;
-      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.35);
-    }
-    .wizard-mini-summary {
       font-size: 11px;
-      background: white;
-      border-radius: 14px;
-      padding: 8px 10px;
-      border: 1px solid rgba(148, 163, 184, 0.6);
-      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+      color: var(--text-softer);
+      margin-top: 6px;
+      position: relative;
+      z-index: 1;
     }
-    .wizard-mini-summary h3 { font-size: 11px; font-weight: 600; margin-bottom: 4px; }
-    .wizard-mini-summary ul { list-style: none; }
-    .wizard-mini-summary li { margin-bottom: 3px; }
-    .pill-green {
-      display: inline-flex;
-      padding: 3px 7px;
+
+    .usage-row strong {
+      color: var(--text-soft);
+    }
+
+    .usage-bar {
+      flex: 1;
+      height: 4px;
       border-radius: 999px;
+      background: rgba(15, 23, 42, 0.95);
+      margin-left: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(31, 41, 55, 0.95);
+      position: relative;
+    }
+
+    .usage-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #22c55e, #4ade80, #22c55e);
+      width: 25%;
+    }
+
+    .alert-box {
+      margin-top: 4px;
+      border-radius: 12px;
+      padding: 6px 8px;
+      font-size: 11px;
+      background: rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(55, 65, 81, 0.95);
+      color: var(--text-soft);
+      display: flex;
+      gap: 6px;
+      align-items: flex-start;
+      position: relative;
+      z-index: 1;
+    }
+
+    .alert-box strong {
+      color: var(--accent-strong);
+      font-weight: 500;
+    }
+
+    .alert-box span.icon {
+      font-size: 13px;
+      margin-top: 1px;
+    }
+
+    .footer-note {
+      margin-top: 2px;
       font-size: 10px;
-      background: #dcfce7;
-      border: 1px solid rgba(34, 197, 94, 0.6);
-      color: #166534;
-      margin-right: 2px;
+      color: var(--text-softer);
+      position: relative;
+      z-index: 1;
     }
-    .wizard-footer {
-      display: flex; justify-content: space-between;
-      align-items: center; margin-top: 4px;
-      font-size: 11px; color: var(--text-soft);
+
+    .footer-note strong {
+      color: var(--accent-strong);
+      font-weight: 500;
     }
-    .wizard-footer-right { display: flex; gap: 6px; }
-    .btn-text {
-      border: none; background: transparent;
-      font-size: 11px; color: var(--text-soft);
-      cursor: pointer; text-decoration: underline;
+
+    .disclaimer {
+      margin-top: 4px;
+      font-size: 10px;
+      color: var(--text-softer);
+      padding-top: 6px;
+      border-top: 1px dashed rgba(31, 41, 55, 0.9);
     }
-    .btn-primary {
-      border: none;
-      background: linear-gradient(135deg, #16a34a, #22c55e);
-      color: white;
-      font-size: 13px; font-weight: 600;
-      padding: 7px 14px;
+
+    .disclaimer strong {
+      color: var(--accent-strong);
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .tag {
+      font-size: 10px;
       border-radius: 999px;
-      cursor: pointer;
-      display: inline-flex; align-items: center; gap: 6px;
-      box-shadow: 0 14px 24px rgba(22, 163, 74, 0.4);
+      padding: 2px 8px;
+      background: rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      color: var(--text-softer);
     }
-    .btn-primary:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-      box-shadow: none;
+
+    @media (max-width: 768px) {
+      .card {
+        padding: 14px 12px 12px;
+      }
+
+      .messages-container {
+        max-height: 380px;
+      }
+
+      .right-panel {
+        max-width: none;
+      }
+
+      .message-icon {
+        display: none;
+      }
+
+      .thinking-indicator {
+        margin-left: 4px;
+      }
+
+      .app-title {
+        font-size: 18px;
+      }
+
+      .app-subtitle {
+        font-size: 11px;
+      }
+
+      .message-bubble {
+        font-size: 12px;
+      }
+
+      #userInput {
+        min-height: 48px;
+      }
     }
   </style>
-
-  <!-- PWA / Manifest -->
-  <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#16a34a" />
-
-  <!-- iOS için (Safari ikon ve fullscreen) -->
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-
 </head>
 <body>
-
-  <!-- Üst Beta bar -->
-  <div id="beta-warning" 
-     style="
-        width: 100%;
-        padding: 10px 18px;
-        background: #fff7d6;
-        border-bottom: 1px solid #f0d98c;
-        color: #5e4a1b;
-        font-size: 13px;
-        font-family: system-ui, sans-serif;
-        text-align: center;
-        position: fixed;
-        top: 0;
-        left: 0;
-        z-index: 9999;
-     ">
-    🧪 <strong>Sulama Asistanı Beta Sürümü</strong> – Yapay zekâ desteklidir; zaman zaman hatalı veya eksik bilgiler verebilir.
-    Lütfen önerileri uygulamadan önce kontrol edin.
-    
-    <button
-        onclick="closeBetaWarning()"
-        style="
-            margin-left: 8px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #7a5f2a;
-            text-decoration: underline;
-            font-size: 12px;
-        ">
-        Kapat
-    </button>
-  </div>
-
-  <!-- Wizard -->
-  <div class="wizard-overlay" id="wizardOverlay">
-    <div class="wizard-container">
-      <div class="wizard-header">
-        <div class="wizard-header-left">
-          <h2>Bahçen için hızlı bir proje tasarlayalım</h2>
-          <p>Önce birkaç kısa soru soracağım, sonra Sulama Asistanı detaylı tasarım, malzeme listesi ve maliyet hesabını çıkaracak.</p>
+  <div class="app-shell">
+    <div class="card">
+      <div class="card-header">
+        <div class="title-group">
+          <div class="title-line">
+            <div class="app-title">
+              <span class="logo-dot"></span>
+              Sulama Asistanı
+            </div>
+            <div class="badge-beta">
+              <div class="badge-beta-pill">
+                <span>β</span>
+              </div>
+              <div class="badge-beta-text">
+                <strong>BETA SÜRÜM</strong>
+                <span>Test aşamasında, hata yapabilir</span>
+              </div>
+            </div>
+          </div>
+          <div class="app-subtitle">
+            Villa ve peyzaj bahçeleri için <strong>otomatik sulama sistemi</strong> hesabı, malzeme listesi ve teklif
+            analizi yapabilen bir yapay zekâ asistanıdır.
+          </div>
+          <div class="chip-row">
+            <div class="chip">
+              <span class="dot"></span>
+              <span><strong>Villa / Peyzaj</strong> odaklı sulama hesabı</span>
+            </div>
+            <div class="chip chip-muted">
+              <span class="dot blue"></span>
+              <span>TS EN standartlarına yakın <strong>hidrolik hesap</strong></span>
+            </div>
+            <div class="chip chip-muted">
+              <span class="dot amber"></span>
+              <span><strong>Ürün eşleştirme</strong> + kabaca maliyet analizi</span>
+            </div>
+          </div>
         </div>
-        <div class="wizard-step-badges">1/1 Proje Özeti</div>
-      </div>
 
-      <div class="wizard-body">
-        <!-- SOL TARAF: SORULAR -->
-        <form id="wizardForm">
-          <!-- Alan -->
-          <div class="wizard-form-group">
-            <label for="areaRange">Alan (m²)</label>
-            <p class="wizard-sub">Tahmini alanı girmen yeterli, sonra sohbet içinde revize edebiliriz.</p>
-            <div class="wizard-range-row">
-              <input type="range" id="areaRange" min="50" max="2000" step="10" value="200" />
-              <div class="wizard-range-value">
-                <span id="areaValue">200</span> m²
-              </div>
-            </div>
-          </div>
-
-          <!-- Bahçe şekli -->
-          <div class="wizard-form-group">
-            <label>Bahçe şekli</label>
-            <div class="wizard-options" data-field="shape">
-              <div class="wizard-option active" data-value="dikdortgen">
-                <span class="label">Dikdörtgen</span><span class="tag">En yaygın</span>
-              </div>
-              <div class="wizard-option" data-value="L">
-                <span class="label">L şekilli</span><span class="tag">Köşe bahçe</span>
-              </div>
-              <div class="wizard-option" data-value="kare">
-                <span class="label">Kare</span><span class="tag">Basit plan</span>
-              </div>
-              <div class="wizard-option" data-value="serbest">
-                <span class="label">Serbest</span><span class="tag">Düzensiz</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Su kaynağı -->
-          <div class="wizard-form-group">
-            <label>Su kaynağı</label>
-            <div class="wizard-options" data-field="waterSource">
-              <div class="wizard-option active" data-value="sebekesu">
-                <span class="label">Şebeke suyu</span><span class="tag">Ev su hattı</span>
-              </div>
-              <div class="wizard-option" data-value="kuyu">
-                <span class="label">Kuyu</span><span class="tag">Dalgıç pompa</span>
-              </div>
-              <div class="wizard-option" data-value="depo">
-                <span class="label">Depo + hidrofor</span><span class="tag">Basınç kontrollü</span>
-              </div>
-              <div class="wizard-option" data-value="sondaj">
-                <span class="label">Sondaj</span><span class="tag">Yüksek debi</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Basınç -->
-          <div class="wizard-form-group">
-            <label>Çalışma basıncı</label>
-            <p class="wizard-sub">Bilmiyorsan “Bilmiyorum” seçili kalabilir. Sonradan netleştiririz.</p>
-            <div class="wizard-options" data-field="pressureMode">
-              <div class="wizard-option active" data-value="unknown" id="pressureUnknown">
-                <span class="label">Bilmiyorum</span><span class="tag">Varsayılan hesap</span>
-              </div>
-              <div class="wizard-option" data-value="known" id="pressureKnown">
-                <span class="label">Belli</span><span class="tag">Bar cinsinden</span>
-              </div>
-            </div>
-            <input
-              class="wizard-input"
-              type="number"
-              step="0.1"
-              min="0.5"
-              max="8"
-              id="pressureInput"
-              placeholder="Örn: 3.0 bar"
-              style="margin-top:6px; display:none;"
-            />
-          </div>
-
-          <!-- Sistem tipi -->
-          <div class="wizard-form-group">
-            <label>Sistem tipi</label>
-            <div class="wizard-options" data-field="systemType">
-              <div class="wizard-option active" data-value="sprink">
-                <span class="label">Sprink</span><span class="tag">Klasik çim</span>
-              </div>
-              <div class="wizard-option" data-value="rotor">
-                <span class="label">Rotor</span><span class="tag">Geniş alan</span>
-              </div>
-              <div class="wizard-option" data-value="damla">
-                <span class="label">Damla</span><span class="tag">Ağaç / çalı</span>
-              </div>
-              <div class="wizard-option" data-value="karisik">
-                <span class="label">Karışık</span><span class="tag">Sprink + damla</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Otomasyon -->
-          <div class="wizard-form-group">
-            <label>Otomasyon</label>
-            <div class="wizard-options" data-field="automation">
-              <div class="wizard-option active" data-value="evet">
-                <span class="label">Tam otomatik</span><span class="tag">Programlanabilir cihaz</span>
-              </div>
-              <div class="wizard-option" data-value="hayir">
-                <span class="label">Yarı otomatik / manuel</span><span class="tag">Musluk kontrollü</span>
-              </div>
-            </div>
-          </div>
-        </form>
-
-        <!-- SAĞ TARAF: ÖZET -->
-        <div class="wizard-mini-summary" id="wizardSummary">
-          <h3>Özet</h3>
-          <ul>
-            <li><span class="pill-green" id="summaryArea">200 m² alan</span></li>
-            <li><span class="pill-green" id="summaryShape">Dikdörtgen bahçe</span></li>
-            <li><span class="pill-green" id="summaryWaterSource">Şebeke suyu</span></li>
-            <li><span class="pill-green" id="summarySystemType">Sprink sistem</span></li>
-            <li><span class="pill-green" id="summaryAutomation">Tam otomatik</span></li>
-          </ul>
-          <p style="margin-top:6px;">Bu bilgilerle Sulama Asistanı:</p>
-          <ul style="margin-top:4px; padding-left:14px;">
-            <li>Zone sayısını ve boru çaplarını hesaplayacak,</li>
-            <li>Sprink / damla / rotor adetlerini çıkaracak,</li>
-            <li>Tahmini malzeme listesi ve maliyet verecek.</li>
-          </ul>
+        <!-- GİRİŞ YAP / KAYIT OL BUTONLARI -->
+        <div class="auth-buttons" id="authButtons">
+          <!-- JS load sırasında doldurulacak -->
         </div>
       </div>
 
-      <div class="wizard-footer">
-        <div>İlk etapta tahmini değerler yeterli. Sohbet sırasında bahçeye özel detayları netleştirebiliriz.</div>
-        <div class="wizard-footer-right">
-          <button type="button" class="btn-text" id="skipWizardBtn">Formu atla</button>
-          <button type="button" class="btn-primary" id="startChatBtn">Projeyi başlat ⮕</button>
+      <div class="chat-layout">
+        <div class="chat-panel">
+          <div id="messages" class="messages-container"></div>
+
+          <div id="thinkingIndicator" class="thinking-indicator">
+            <div class="thinking-balls">
+              <span></span><span></span><span></span>
+            </div>
+            <div class="thinking-text">Sulama Asistanı düşünüyor...</div>
+          </div>
+
+          <form id="chatForm" class="input-panel">
+            <div class="question-helpers">
+              <button type="button" class="helper-chip" data-example="400 m² dikdörtgen bahçem var. Depo + hidrofor kullanacağım. Çim alan ve 8 adet ağaç var. Ankara için tam otomatik sulama sistemi hesabı yapar mısın?">
+                <span class="bullet"></span>
+                <span><strong>Örnek</strong> villa bahçesi hesabı</span>
+              </button>
+              <button type="button" class="helper-chip" data-example="200 m² L şeklinde çim alanım var. Şebeke suyu, basınç 3 bar. Sadece çim için otomatik sulama hesabı ve malzeme listesi verir misin?">
+                <span class="bullet"></span>
+                <span>Şebeke suyu ile <strong>çim sulama</strong></span>
+              </button>
+              <button type="button" class="helper-chip" data-example="250 m² bahçemde hem çim hem de damla sulama olacak. Alanı kısaca tarif edeceğim, bana zone dağılımı, boru çapları ve vana sayısını hesaplar mısın?">
+                <span class="bullet"></span>
+                <span><strong>Karışık</strong> sistem: çim + damla</span>
+              </button>
+            </div>
+
+            <div class="input-row">
+              <div class="input-group">
+                <div class="input-label-row">
+                  <span><strong>Sorunuzu detaylı yazın</strong></span>
+                  <span>Bahçe alanı, şekli, su kaynağı (şebeke/kuyu/depo), otomasyon isteği vb. mutlaka belirtin.</span>
+                </div>
+                <div class="textarea-wrapper">
+                  <textarea id="userInput" name="message" rows="2" placeholder="Örn: 300 m² dikdörtgen bahçem var. Şebeke suyu, 4 bar. Tam otomatik çim sulama sistemi ve malzeme listesi çıkarır mısın?"></textarea>
+                </div>
+                <div class="input-counter" id="charCounter">0 / 1000 karakter</div>
+              </div>
+
+              <div>
+                <button id="sendBtn" type="submit" class="send-button">
+                  <span class="icon">➤</span>
+                  <span class="text">Gönder</span>
+                </button>
+                <div class="send-key-hint">Enter: Gönder • Shift+Enter: Satır atla</div>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="right-panel">
+          <div class="right-panel-card">
+            <div class="right-panel-card-header">
+              <div class="right-panel-title">
+                <span class="dot"></span>
+                Sulama hesabı için ipuçları
+              </div>
+            </div>
+            <div class="right-panel-subtitle">
+              Aşağıdaki bilgileri ne kadar net verirsen, hesabın doğruluğu o kadar artar:
+            </div>
+
+            <div class="example-list">
+              <div class="example-item">
+                <strong>1. Alan ve şekil</strong>
+                <span>Toplam m², dikdörtgen / L / U şekli, eğim durumu, teraslar, çim + peyzaj ayrımı.</span>
+              </div>
+              <div class="example-item">
+                <strong>2. Su kaynağı</strong>
+                <span>Şebeke / kuyu / depo, varsa hidrofor ve yaklaşık çalışma basıncı (bar) + debi (l/dk) bilgisi.</span>
+              </div>
+              <div class="example-item">
+                <strong>3. Otomasyon</strong>
+                <span>Manuel musluk mu, yoksa tam otomatik kontrol ünitesi + vana kutuları mı istediğini mutlaka söyle.</span>
+              </div>
+            </div>
+
+            <div class="usage-row">
+              <span><strong>Günlük limit:</strong> 30 soru</span>
+              <div class="usage-bar">
+                <div class="usage-bar-fill" id="usageFill"></div>
+              </div>
+            </div>
+
+            <div class="alert-box">
+              <span class="icon">⚠️</span>
+              <div>
+                <strong>ÖNEMLİ:</strong> Bu asistan henüz <strong>beta aşamasındadır</strong>. Hidrolik hesap ve ürün eşleştirmelerinde
+                hata yapabilir; çıkardığı malzeme listelerini mutlaka profesyonel bir uygulamacı ile kontrol edin.
+              </div>
+            </div>
+          </div>
+
+          <div class="right-panel-card">
+            <div class="right-panel-card-header">
+              <div class="right-panel-title">
+                <span class="dot"></span>
+                Sınırlamalar ve uyarılar
+              </div>
+            </div>
+            <div class="right-panel-subtitle">
+              Şimdilik aşağıdaki kapsamda çalışır:
+            </div>
+
+            <ul class="example-list">
+              <li class="example-item">
+                <strong>VİLLA / PEYZAJ AĞIRLIKLI</strong>
+                <span>Tarla sulaması, endüstriyel tesisler veya seralar için hesaplar henüz deneme aşamasındadır.</span>
+              </li>
+              <li class="example-item">
+                <strong>KABACA MALİYET ANALİZİ</strong>
+                <span>Verdiği fiyatlar yaklaşık olup stok, kur ve tedarik koşullarına göre değişiklik gösterebilir.</span>
+              </li>
+            </ul>
+
+            <div class="footer-note">
+              <strong>Hukuki uyarı:</strong> Sulama Asistanı, bir <strong>yapay zekâ destekli danışman</strong>dır. Nihai proje,
+              uygulama ve keşif sorumluluğu kullanıcıdadır.
+            </div>
+
+            <div class="disclaimer">
+              <strong>Not:</strong> Bu sistem beta sürümündedir. Hesaplama ve tavsiyelerde hata yapabilir, her zaman güncel
+              standartlara uygun çalışmayabilir. Lütfen gerçek sahada uygulamadan önce bir uzmana doğrulatın.
+            </div>
+
+            <div class="tag-row">
+              <div class="tag">#villa_sulama</div>
+              <div class="tag">#peyzaj_sulama</div>
+              <div class="tag">#otomatik_sulama</div>
+              <div class="tag">#damla_sulama</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Ana Uygulama -->
-  <div class="app-shell">
-    <header class="app-header">
-      <div class="brand">
-        <div class="brand-logo">💧</div>
-        <div class="brand-text">
-          <h1>Sulama Asistanı</h1>
-          <p>Villa ve peyzaj bahçeleri için akıllı sulama danışmanı</p>
-        </div>
-      </div>
-      <div class="header-badge">
-        <span class="led"></span>
-        <span>Beta • Türkiye koşullarına göre hesaplama</span>
-      </div>
-    </header>
-
-    <main class="app-main">
-      <section class="chat-section">
-        <div class="chat-header-line">
-          <div>
-            <div class="chat-title">
-              <span class="dot"></span>
-              <span>Sohbet Alanı</span>
-            </div>
-            <div class="chat-sub">Bahçeni, su kaynağını ve beklentini anlat; gerisini asistan halletsin.</div>
-          </div>
-        </div>
-
-        <div class="chat-window">
-          <div id="messages" class="messages"></div>
-          <div id="thinkingIndicator" class="thinking" style="display:none;">
-            <div class="thinking-dot"></div>
-            <div class="thinking-dot"></div>
-            <div class="thinking-dot"></div>
-            <span>Sulama Asistanı düşünüyor...</span>
-          </div>
-          <form id="chatForm" class="chat-input">
-            <input
-              id="userInput"
-              type="text"
-              autocomplete="off"
-              placeholder="Örn: 300 m² dikdörtgen bahçem var, şebeke suyu ile tam otomatik sistem istiyorum."
-            />
-            <button id="sendBtn" type="submit">Gönder ⮕</button>
-          </form>
-        </div>
-      </section>
-
-      <aside class="project-panel">
-        <div class="panel-header">
-          <h2>Proje Özeti</h2>
-        </div>
-
-        <div class="panel-section">
-          <h3>Bahçe Bilgileri</h3>
-          <div class="panel-grid">
-            <div class="panel-label">Alan</div>
-            <div class="panel-value" id="panelArea">200 m²</div>
-            <div class="panel-label">Şekil</div>
-            <div class="panel-value" id="panelShape">Dikdörtgen</div>
-            <div class="panel-label">Su kaynağı</div>
-            <div class="panel-value" id="panelWaterSource">Şebeke suyu</div>
-            <div class="panel-label">Sistem tipi</div>
-            <div class="panel-value" id="panelSystemType">Sprink</div>
-            <div class="panel-label">Otomasyon</div>
-            <div class="panel-value" id="panelAutomation">Tam otomatik</div>
-          </div>
-        </div>
-
-        <div class="panel-section">
-          <h3>Tahmini Zone / Debi</h3>
-          <div class="panel-grid">
-            <div class="panel-label">Zone sayısı</div>
-            <div class="panel-value" id="panelZones">3</div>
-            <div class="panel-label">Tahmini debi</div>
-            <div class="panel-value" id="panelFlow">2,5 m³/saat</div>
-            <div class="panel-label">Ana boru çapı</div>
-            <div class="panel-value" id="panelMainPipe">32 mm</div>
-            <div class="panel-label">Lateral boru</div>
-            <div class="panel-value" id="panelLateralPipe">20 mm</div>
-          </div>
-          <p class="panel-note">Bu değerler, wizard bilgilerine göre ilk tahmindir; sohbet sırasında netleştirilir.</p>
-        </div>
-
-        <div class="panel-section">
-          <h3>Tahmini Maliyet</h3>
-          <div class="maliyet" id="panelCost">–</div>
-          <div class="maliyet-sub" id="panelCostNote">Malzeme listesi çıkarıldığında tahmini maliyet hesaplanır.</div>
-        </div>
-
-        <div class="panel-section">
-          <h3>Teklif / PDF</h3>
-          <button id="downloadOfferBtn" class="btn-primary" type="button" style="width:100%; justify-content:center;">
-            Teklif formunu indir (PDF)
-          </button>
-          <p class="panel-note">Önce bahçen için bir proje ve malzeme listesi oluştur; ardından PDF teklif al.</p>
-        </div>
-      </aside>
-    </main>
-  </div>
-
-  <!-- JS -->
   <script>
-    // Beta bar kapatma
-    function closeBetaWarning() {
-      const bar = document.getElementById("beta-warning");
-      if (bar) {
-        bar.style.display = "none";
-        document.body.style.paddingTop = "0px";
+    var messagesEl = document.getElementById("messages");
+    var chatForm = document.getElementById("chatForm");
+    var userInputEl = document.getElementById("userInput");
+    var sendBtn = document.getElementById("sendBtn");
+    var thinkingIndicator = document.getElementById("thinkingIndicator");
+    var charCounter = document.getElementById("charCounter");
+    var usageFill = document.getElementById("usageFill");
+
+    var chatLocked = false;
+    var dailyLimit = 30;
+    var usedToday = 0;
+
+    function formatTime(date) {
+      var h = date.getHours();
+      var m = date.getMinutes();
+      if (m < 10) m = "0" + m;
+      return h + ":" + m;
+    }
+
+    function addMessage(role, text, opts) {
+      opts = opts || {};
+      var isSystemWarning = opts.systemWarning || false;
+
+      var wrapper = document.createElement("div");
+      wrapper.className = "message " + role + (isSystemWarning ? " system-warning" : "");
+
+      var icon = document.createElement("div");
+      icon.className = "message-icon " + role;
+      icon.textContent = role === "user" ? "😀" : "💧";
+
+      var bubble = document.createElement("div");
+      bubble.className = "message-bubble";
+
+      var header = document.createElement("div");
+      header.className = "message-header";
+
+      var meta = document.createElement("div");
+      meta.className = "message-meta";
+
+      var roleEl = document.createElement("span");
+      roleEl.className = "message-role";
+      roleEl.textContent = role === "user" ? "Kullanıcı" : "Sulama Asistanı";
+
+      var timeEl = document.createElement("span");
+      timeEl.className = "message-timestamp";
+      timeEl.textContent = formatTime(new Date());
+
+      meta.appendChild(roleEl);
+      meta.appendChild(timeEl);
+      header.appendChild(meta);
+
+      var modelTag = document.createElement("span");
+      modelTag.className = "message model-tag";
+      modelTag.textContent = role === "assistant" ? "Model: SulamaAsistani-GPT" : "";
+      header.appendChild(modelTag);
+
+      var content = document.createElement("div");
+      content.className = "message-content";
+
+      if (text) {
+        var paragraphs = text.split(/\n{2,}/);
+        paragraphs.forEach(function (p) {
+          var pEl = document.createElement("p");
+          pEl.textContent = p.trim();
+          content.appendChild(pEl);
+        });
+      }
+
+      bubble.appendChild(header);
+      bubble.appendChild(content);
+
+      wrapper.appendChild(icon);
+      wrapper.appendChild(bubble);
+
+      messagesEl.appendChild(wrapper);
+
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function setThinking(isThinking) {
+      if (isThinking) {
+        thinkingIndicator.style.display = "inline-flex";
+      } else {
+        thinkingIndicator.style.display = "none";
       }
     }
 
-    // Global durum
-    const projectState = {
-      area: 200,
-      shape: "dikdortgen",
-      waterSource: "sebekesu",
-      systemType: "sprink",
-      automation: "evet",
-      pressureMode: "unknown",
-      pressureBar: null,
-    };
+    function setInputDisabled(disabled) {
+      userInputEl.disabled = disabled;
+      sendBtn.disabled = disabled;
+      chatLocked = disabled;
+    }
 
-    let conversationHistory = [];
-    let lastOfferData = null;
+    function updateCharCounter() {
+      var len = userInputEl.value.length;
+      charCounter.textContent = len + " / 1000 karakter";
+      if (len > 1000) {
+        charCounter.style.color = "#f97373";
+      } else {
+        charCounter.style.color = "var(--text-softer)";
+      }
+    }
 
-    // DOM referansları
-    const wizardOverlay = document.getElementById("wizardOverlay");
-    const areaRange = document.getElementById("areaRange");
-    const areaValue = document.getElementById("areaValue");
-    const pressureInput = document.getElementById("pressureInput");
-    const skipWizardBtn = document.getElementById("skipWizardBtn");
-    const startChatBtn = document.getElementById("startChatBtn");
+    function updateUsageBar() {
+      var ratio = Math.min(usedToday / dailyLimit, 1);
+      usageFill.style.width = (ratio * 100).toFixed(0) + "%";
+    }
 
-    const summaryArea = document.getElementById("summaryArea");
-    const summaryShape = document.getElementById("summaryShape");
-    const summaryWaterSource = document.getElementById("summaryWaterSource");
-    const summarySystemType = document.getElementById("summarySystemType");
-    const summaryAutomation = document.getElementById("summaryAutomation");
+    userInputEl.addEventListener("input", updateCharCounter);
 
-    const panelArea = document.getElementById("panelArea");
-    const panelShape = document.getElementById("panelShape");
-    const panelWaterSource = document.getElementById("panelWaterSource");
-    const panelSystemType = document.getElementById("panelSystemType");
-    const panelAutomation = document.getElementById("panelAutomation");
-    const panelZones = document.getElementById("panelZones");
-    const panelFlow = document.getElementById("panelFlow");
-    const panelMainPipe = document.getElementById("panelMainPipe");
-    const panelLateralPipe = document.getElementById("panelLateralPipe");
-    const panelCost = document.getElementById("panelCost");
-    const panelCostNote = document.getElementById("panelCostNote");
-    const downloadOfferBtn = document.getElementById("downloadOfferBtn");
-
-    const messagesDiv = document.getElementById("messages");
-    const chatForm = document.getElementById("chatForm");
-    const userInput = document.getElementById("userInput");
-    const sendBtn = document.getElementById("sendBtn");
-    const thinkingIndicator = document.getElementById("thinkingIndicator");
-
-    // Wizard alanı
-    areaRange.addEventListener("input", () => {
-      const val = Number(areaRange.value);
-      projectState.area = val;
-      areaValue.textContent = val;
-      summaryArea.textContent = val + " m² alan";
-      updateProjectPanel();
+    userInputEl.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        chatForm.dispatchEvent(new Event("submit", { cancelable: true }));
+      }
     });
 
-    // Wizard seçenekleri
-    document.querySelectorAll(".wizard-options").forEach((group) => {
-      const field = group.dataset.field;
-      group.querySelectorAll(".wizard-option").forEach((opt) => {
-        opt.addEventListener("click", () => {
-          group.querySelectorAll(".wizard-option").forEach((o) => o.classList.remove("active"));
-          opt.classList.add("active");
-          const value = opt.dataset.value;
-
-          if (field === "shape") {
-            projectState.shape = value;
-            const labelMap = { dikdortgen: "Dikdörtgen bahçe", L: "L şekilli bahçe", kare: "Kare bahçe", serbest: "Serbest form" };
-            summaryShape.textContent = labelMap[value] || "Belirtilmemiş";
-          } else if (field === "waterSource") {
-            projectState.waterSource = value;
-            const labelMap = {
-              sebekesu: "Şebeke suyu",
-              kuyu: "Kuyu",
-              depo: "Depo + hidrofor",
-              sondaj: "Sondaj",
-            };
-            summaryWaterSource.textContent = labelMap[value] || "Belirtilmemiş";
-          } else if (field === "systemType") {
-            projectState.systemType = value;
-            const labelMap = {
-              sprink: "Sprink sistem",
-              rotor: "Rotor sistem",
-              damla: "Damla sulama",
-              karisik: "Karışık sistem",
-            };
-            summarySystemType.textContent = labelMap[value] || "Belirtilmemiş";
-          } else if (field === "automation") {
-            projectState.automation = value;
-            summaryAutomation.textContent = value === "evet" ? "Tam otomatik" : "Yarı otomatik / manuel";
-          } else if (field === "pressureMode") {
-            projectState.pressureMode = value;
-            if (value === "known") {
-              pressureInput.style.display = "block";
-            } else {
-              pressureInput.style.display = "none";
-              projectState.pressureBar = null;
-            }
-          }
-          updateProjectPanel();
-        });
+    document.querySelectorAll(".helper-chip").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var example = btn.getAttribute("data-example");
+        if (!example) return;
+        userInputEl.value = example;
+        updateCharCounter();
+        userInputEl.focus();
       });
     });
 
-    pressureInput.addEventListener("input", () => {
-      const v = Number(pressureInput.value);
-      projectState.pressureBar = isNaN(v) ? null : v;
-      updateProjectPanel();
-    });
-
-    // Paneli güncelle
-    function updateProjectPanel() {
-      panelArea.textContent = projectState.area + " m²";
-      const shapeMap = { dikdortgen: "Dikdörtgen", L: "L şekilli", kare: "Kare", serbest: "Serbest" };
-      panelShape.textContent = shapeMap[projectState.shape] || "Belirtilmemiş";
-
-      const waterMap = {
-        sebekesu: "Şebeke suyu",
-        kuyu: "Kuyu",
-        depo: "Depo + hidrofor",
-        sondaj: "Sondaj",
-      };
-      panelWaterSource.textContent = waterMap[projectState.waterSource] || "Belirtilmemiş";
-
-      const sysMap = { sprink: "Sprink", rotor: "Rotor", damla: "Damla", karisik: "Karışık" };
-      panelSystemType.textContent = sysMap[projectState.systemType] || "Belirtilmemiş";
-      panelAutomation.textContent = projectState.automation === "evet" ? "Tam otomatik" : "Yarı otomatik / manuel";
-
-      // Basit zone tahmini: 120 m² / zone
-      const approxZones = Math.max(1, Math.round(projectState.area / 120));
-      panelZones.textContent = approxZones.toString();
-
-      // Kabaca debi
-      const flow = (projectState.area / 80).toFixed(1);
-      panelFlow.textContent = flow + " m³/saat";
-
-      // Boru çapı
-      panelMainPipe.textContent = projectState.area > 350 ? "40 mm" : "32 mm";
-      panelLateralPipe.textContent = "20 mm";
-    }
-
-    updateProjectPanel();
-
-    // Wizard butonları
-    function openBetaBar() {
-      const bar = document.getElementById("beta-warning");
-      if (bar) {
-        bar.style.display = "flex";
-        document.body.style.paddingTop = bar.offsetHeight + "px";
-      }
-    }
-
-    startChatBtn.addEventListener("click", () => {
-      wizardOverlay.style.display = "none";
-      openBetaBar();
-      addMessage(
-        "assistant",
-        "Bahçe bilgilerini aldım. Alan: " +
-          projectState.area +
-          " m², şekil: " +
-          panelShape.textContent +
-          ", su kaynağı: " +
-          panelWaterSource.textContent +
-          ". Şimdi bu bilgilere göre zone planı, boru çapları ve malzeme listesini çıkarabiliriz. İstersen bahçenin özel durumlarını (ağaçlar, teras, eğim vb.) de yaz."
-      );
-      userInput.focus();
-    });
-
-    skipWizardBtn.addEventListener("click", () => {
-      wizardOverlay.style.display = "none";
-      openBetaBar();
-      addMessage(
-        "assistant",
-        "Hoş geldin. Bahçe alanını, su kaynağını ve otomasyon isteğini yazarsan; sana özel sulama projesi, malzeme listesi ve tahmini maliyet çıkaracağım."
-      );
-      userInput.focus();
-    });
-
-    // Mesaj ekleme
-    function addMessage(role, text) {
-      const wrap = document.createElement("div");
-      wrap.className = "message " + role;
-
-      const bubble = document.createElement("div");
-      bubble.className = "bubble";
-      bubble.textContent = text;
-
-      wrap.appendChild(bubble);
-      messagesDiv.appendChild(wrap);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-      conversationHistory.push({ role, content: text });
-    }
-
-    // Chat gönderme
-    chatForm.addEventListener("submit", async (e) => {
+    chatForm.addEventListener("submit", function (e) {
       e.preventDefault();
-      const text = userInput.value.trim();
+      if (chatLocked) return;
+
+      var text = userInputEl.value.trim();
       if (!text) return;
 
-      addMessage("user", text);
-      userInput.value = "";
-      sendBtn.disabled = true;
-      thinkingIndicator.style.display = "inline-flex";
-
-      try {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: text,
-            history: conversationHistory,
-            projectState,
-          }),
-        });
-
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
-
-        const reply = data.reply || data.message || data.answer || "Sunucudan yanıt alındı ama metin bulunamadı.";
-        addMessage("assistant", reply);
-
-        if (data.projectState) {
-          Object.assign(projectState, data.projectState);
-          updateProjectPanel();
-        }
-        if (data.offerSummary) {
-          lastOfferData = data.offerSummary;
-          panelCost.textContent = data.offerSummary.totalText || data.offerSummary.total || "Güncellendi";
-          panelCostNote.textContent = data.offerSummary.note || "Teklif detayları güncellendi.";
-        }
-      } catch (err) {
-        console.error(err);
-        addMessage("assistant", "Sunucuyla bağlantıda bir sorun oluştu. Lütfen biraz sonra tekrar dene.");
-      } finally {
-        sendBtn.disabled = false;
-        thinkingIndicator.style.display = "none";
-      }
-    });
-
-    // Basit PDF
-    downloadOfferBtn.addEventListener("click", () => {
-      const { jsPDF } = window.jspdf || {};
-      if (!jsPDF) {
-        alert("PDF modülü yüklenemedi.");
+      if (usedToday >= dailyLimit) {
+        addMessage(
+          "assistant",
+          "Günlük soru limitiniz dolmuş görünüyor. Yarın tekrar deneyebilirsiniz veya yöneticinizden limit artırımı talep edebilirsiniz.",
+          { systemWarning: true }
+        );
+        setInputDisabled(true);
         return;
       }
 
-      const doc = new jsPDF();
+      addMessage("user", text);
+      userInputEl.value = "";
+      updateCharCounter();
 
-      doc.setFontSize(14);
-      doc.text("Sulama Asistanı - Teklif Özeti", 14, 18);
+      usedToday++;
+      updateUsageBar();
 
-      doc.setFontSize(11);
-      doc.text("Bahçe Bilgileri:", 14, 30);
-      doc.text("Alan: " + projectState.area + " m²", 14, 36);
-      doc.text("Şekil: " + panelShape.textContent, 14, 42);
-      doc.text("Su kaynağı: " + panelWaterSource.textContent, 14, 48);
-      doc.text("Sistem tipi: " + panelSystemType.textContent, 14, 54);
-      doc.text("Otomasyon: " + panelAutomation.textContent, 14, 60);
+      setInputDisabled(true);
+      setThinking(true);
 
-      doc.text("Zone sayısı: " + panelZones.textContent, 14, 70);
-      doc.text("Tahmini debi: " + panelFlow.textContent, 14, 76);
-      doc.text("Ana boru: " + panelMainPipe.textContent, 14, 82);
-      doc.text("Lateral boru: " + panelLateralPipe.textContent, 14, 88);
+      var projectState = null;
 
-      if (panelCost.textContent && panelCost.textContent !== "–") {
-        doc.text("Tahmini maliyet: " + panelCost.textContent, 14, 98);
+      // localStorage'dan kullanıcı bilgisi çek
+      var storedUser = null;
+      try {
+        var rawUser = localStorage.getItem("user");
+        if (rawUser) {
+          storedUser = JSON.parse(rawUser);
+        }
+      } catch (e) {
+        storedUser = null;
       }
 
-      doc.save("sulama-teklifi.pdf");
+      if (!storedUser || !storedUser.email) {
+        // Backend hata fırlatmasın diye önden yakalıyoruz
+        setThinking(false);
+        setInputDisabled(false);
+        addMessage(
+          "assistant",
+          "Devam etmeden önce lütfen giriş yapın. Giriş sayfasından e-posta ile oturum açtıktan sonra bu ekrana geri dönün.",
+          { systemWarning: true }
+        );
+        return;
+      }
+
+      fetch("/api/sulama", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          designData: projectState,
+          user: { email: storedUser.email }
+        })
+      })
+        .then(function (res) {
+          var status = res.status;
+          var ok = res.ok;
+          return res.text().then(function (raw) {
+            var data = null;
+            try {
+              data = raw ? JSON.parse(raw) : null;
+            } catch (e) {
+              data = null;
+            }
+            return { ok: ok, status: status, raw: raw, data: data || {} };
+          });
+        })
+        .then(function (result) {
+          var ok = result.ok;
+          var status = result.status;
+          var raw = result.raw || "";
+          var data = result.data || {};
+
+          if (!ok) {
+            if (
+              status === 403 &&
+              (data.code === "LIMIT_EXCEEDED" ||
+                String(data.error || raw || "")
+                  .toLowerCase()
+                  .indexOf("limit") !== -1)
+            ) {
+              addMessage(
+                "assistant",
+                "Günlük soru limitiniz sunucu tarafında dolmuş görünüyor. Lütfen daha sonra tekrar deneyin veya yöneticinizle iletişime geçin.",
+                { systemWarning: true }
+              );
+              setInputDisabled(true);
+              return;
+            }
+
+            throw new Error("HTTP " + status + " - " + raw);
+          }
+
+          var reply = data.reply || data.answer || data.message;
+          if (!reply) {
+            reply =
+              "Sunucudan geçerli bir yanıt alınamadı. Lütfen tekrar deneyin veya yöneticinizle iletişime geçin.";
+          }
+
+          addMessage("assistant", reply);
+        })
+        .catch(function (err) {
+          console.error("İstek hatası:", err);
+          if (!chatLocked) {
+            addMessage(
+              "assistant",
+              "Sunucuyla bağlantıda bir sorun oluştu. Lütfen biraz sonra tekrar dene."
+            );
+          }
+        })
+        .finally(function () {
+          setInputDisabled(false);
+          setThinking(false);
+          userInputEl.focus();
+        });
     });
 
-    // Sayfa yüklendiğinde body padding + SW kaydı
-    window.addEventListener("load", () => {
-      const bar = document.getElementById("beta-warning");
-      if (bar) {
-        document.body.style.paddingTop = bar.offsetHeight + "px";
+    function logoutUser() {
+      try {
+        localStorage.removeItem("user");
+      } catch (e) {}
+      // Çıkıştan sonra login sayfasına gönder
+      window.location.href = "/login";
+    }
+
+    window.addEventListener("load", function () {
+      // 1) Google'dan geldiysek e-postayı URL'den çek
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var googleEmail = params.get("googleEmail");
+        if (googleEmail) {
+          localStorage.setItem(
+            "user",
+            JSON.stringify({ email: googleEmail.toLowerCase() })
+          );
+          // URL'i temizle (parametre kalmasın)
+          params.delete("googleEmail");
+          var newUrl =
+            window.location.pathname +
+            (params.toString() ? "?" + params.toString() : "");
+          window.history.replaceState({}, "", newUrl);
+        }
+      } catch (e) {
+        console.warn("googleEmail parse edilemedi:", e);
       }
 
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then((reg) => {
-            console.log("Service worker kayıtlı:", reg.scope);
-          })
-          .catch((err) => {
-            console.log("Service worker kaydı başarısız:", err);
-          });
+      // 2) Üstteki Giriş/Kayıt veya Kullanıcı/Çıkış butonlarını ayarla
+      var storedUser = null;
+      try {
+        var rawUser2 = localStorage.getItem("user");
+        if (rawUser2) storedUser = JSON.parse(rawUser2);
+      } catch (e) {
+        storedUser = null;
       }
+
+      var authButtons = document.getElementById("authButtons");
+      if (authButtons) {
+        if (storedUser && storedUser.email) {
+          authButtons.innerHTML =
+            '<span style="font-size:11px;color:var(--text-soft);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+            storedUser.email +
+            '</span>' +
+            '<button type="button" class="auth-btn" onclick="logoutUser()">Çıkış Yap</button>';
+        } else {
+          authButtons.innerHTML =
+            '<a href="/login" class="auth-btn primary">Giriş Yap</a>' +
+            '<a href="/register" class="auth-btn">Kayıt Ol</a>';
+        }
+      }
+
+      usedToday = 0;
+      updateUsageBar();
+      updateCharCounter();
+
+      addMessage(
+        "assistant",
+        "Merhaba, ben Sulama Asistanı.\n\nVilla ve peyzaj bahçeleri için otomatik sulama sistemi hesabı, zone planlama, boru çapı seçimi ve kabaca malzeme listesi çıkarabilirim.\n\nBaşlamadan önce lütfen bahçenizin yaklaşık m² bilgisini, şekil tarifini (dikdörtgen, L vb.), su kaynağınızı (şebeke / kuyu / depo) ve otomasyon isteğinizi kısaca yazın."
+      );
     });
   </script>
 </body>

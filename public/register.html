@@ -2,169 +2,465 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
+  <title>Kayıt Ol – Sulama Asistanı</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sulama Asistanı • Kayıt Ol</title>
   <style>
-    body {
+    :root {
+      --bg: #0f172a;
+      --card: #020617;
+      --accent: #22c55e;
+      --accent-strong: #4ade80;
+      --text: #e5e7eb;
+      --text-soft: #9ca3af;
+      --text-softer: #6b7280;
+      --border-subtle: #1f2937;
+    }
+
+    * {
+      box-sizing: border-box;
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f5f7fa;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
       display: flex;
-      justify-content: center;
       align-items: center;
-      height: 100vh;
+      justify-content: center;
+      padding: 16px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 0% 0%, #052e16, #020617 40%, #000),
+        radial-gradient(circle at 100% 100%, #0f172a, #020617 50%, #000);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .shell {
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      justify-content: center;
+    }
+
+    .logo-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 20%, #bbf7d0, #22c55e);
+      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.7),
+        0 8px 18px rgba(22, 163, 74, 0.8);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logo-dot::after {
+      content: "";
+      position: absolute;
+      inset: 35%;
+      border-radius: inherit;
+      border: 1px solid rgba(22, 163, 74, 0.5);
+    }
+
+    .logo-text-main {
+      font-size: 22px;
+      font-weight: 650;
+      letter-spacing: 0.03em;
+    }
+
+    .logo-text-sub {
+      font-size: 11px;
+      color: var(--text-soft);
+      text-align: center;
     }
 
     .card {
-      background: #ffffff;
-      padding: 24px 26px;
-      border-radius: 10px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      background: radial-gradient(
+            circle at 100% 0,
+            rgba(34, 197, 94, 0.18),
+            transparent 55%
+          )
+          padding-box,
+        linear-gradient(135deg, #020617, #020617) border-box;
+      border-radius: 22px;
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      padding: 22px 20px 18px;
+      box-shadow: 0 22px 55px rgba(15, 23, 42, 0.9);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      background: radial-gradient(
+        circle at 0 0,
+        rgba(34, 197, 94, 0.18),
+        transparent 60%
+      );
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .card-header {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 14px;
+    }
+
+    .card-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .beta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      padding: 3px 9px 3px 4px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(34, 197, 94, 0.5);
+    }
+
+    .beta-pill-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 20%, #bbf7d0, #22c55e);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 800;
+      color: #052e16;
+      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.7),
+        0 5px 12px rgba(22, 163, 74, 0.8);
+    }
+
+    .beta-pill-text {
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--accent-strong);
+      font-weight: 600;
+    }
+
+    .card-subtitle {
+      font-size: 12px;
+      color: var(--text-soft);
+    }
+
+    .card-subtitle strong {
+      color: var(--accent-strong);
+      font-weight: 500;
+    }
+
+    .section-label {
+      margin-top: 10px;
+      margin-bottom: 8px;
+      font-size: 11px;
+      color: var(--text-soft);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .btn-google {
       width: 100%;
-      max-width: 360px;
-    }
-
-    h1 {
-      margin-top: 0;
-      font-size: 20px;
-      margin-bottom: 4px;
-      text-align: center;
-    }
-
-    .subtitle {
+      border-radius: 999px;
+      padding: 8px 12px;
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      background: rgba(15, 23, 42, 0.98);
+      color: var(--text);
       font-size: 13px;
-      color: #555;
-      text-align: center;
-      margin-bottom: 20px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease-out;
+    }
+
+    .btn-google img {
+      width: 16px;
+      height: 16px;
+    }
+
+    .btn-google:hover {
+      border-color: rgba(34, 197, 94, 0.6);
+      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.5),
+        0 10px 24px rgba(22, 163, 74, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 10px 0;
+      font-size: 11px;
+      color: var(--text-softer);
+    }
+
+    .divider span.line {
+      flex: 1;
+      height: 1px;
+      background: rgba(31, 41, 55, 0.9);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 10px;
+      position: relative;
+      z-index: 1;
     }
 
     label {
-      display: block;
+      font-size: 12px;
+      color: var(--text-soft);
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      padding: 9px 11px;
+      border-radius: 11px;
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      background: rgba(15, 23, 42, 0.98);
+      color: var(--text);
       font-size: 13px;
-      margin-bottom: 4px;
-      margin-top: 10px;
+      outline: none;
+      transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out;
     }
 
-    input {
-      width: 100%;
-      padding: 8px 9px;
-      border-radius: 6px;
-      border: 1px solid #bbb;
-      font-size: 14px;
+    input::placeholder {
+      color: var(--text-softer);
     }
 
-    button {
+    input:focus {
+      border-color: rgba(34, 197, 94, 0.8);
+      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.5);
+    }
+
+    .btn-primary {
       width: 100%;
-      margin-top: 16px;
-      padding: 9px;
-      border-radius: 6px;
+      border-radius: 999px;
+      padding: 9px 12px;
       border: none;
-      background: #1b5e20;
-      color: #fff;
-      font-size: 14px;
       cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      background: linear-gradient(135deg, #22c55e, #16a34a, #22c55e);
+      color: #052e16;
+      box-shadow: 0 12px 26px rgba(22, 163, 74, 0.65);
+      transition: all 0.15s ease-out;
+      margin-top: 4px;
     }
 
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 32px rgba(22, 163, 74, 0.75);
     }
 
-    .alt {
-      margin-top: 10px;
-      font-size: 12px;
-      text-align: center;
+    .btn-primary:active {
+      transform: translateY(0);
+      box-shadow: 0 8px 18px rgba(22, 163, 74, 0.6);
     }
 
-    .alt a {
-      color: #1b5e20;
+    .helper-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-soft);
+      margin-top: 6px;
+    }
+
+    .helper-row a {
+      color: var(--accent-strong);
       text-decoration: none;
-      font-weight: bold;
+      font-weight: 500;
     }
 
-    .error {
+    .helper-row a:hover {
+      text-decoration: underline;
+    }
+
+    .status {
       margin-top: 8px;
-      font-size: 12px;
-      color: #c62828;
-      text-align: center;
-      min-height: 16px;
+      font-size: 11px;
+      min-height: 14px;
+    }
+
+    .status.error {
+      color: #f97373;
+    }
+
+    .status.ok {
+      color: var(--accent-strong);
+    }
+
+    .disclaimer {
+      margin-top: 10px;
+      font-size: 10px;
+      color: var(--text-softer);
+      position: relative;
+      z-index: 1;
+    }
+
+    .disclaimer strong {
+      color: var(--accent-strong);
     }
   </style>
 </head>
 <body>
+  <div class="shell">
+    <div class="logo-row">
+      <div class="logo-dot"></div>
+      <div>
+        <div class="logo-text-main">Sulama Asistanı</div>
+        <div class="logo-text-sub">Villa ve peyzaj bahçeleri için akıllı sulama hesabı</div>
+      </div>
+    </div>
 
-<div class="card">
-  <h1>💧 Sulama Asistanı</h1>
-  <div class="subtitle">Hızlıca kayıt ol, bahçeni birlikte projelendirelim.</div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title-row">
+          <div class="card-title">Yeni bir hesap oluşturun</div>
+          <div class="beta-pill">
+            <div class="beta-pill-dot">β</div>
+            <div class="beta-pill-text">BETA</div>
+          </div>
+        </div>
+        <div class="card-subtitle">
+          Kayıt olurken girdiğiniz e-posta, <strong>soru limitiniz</strong> ve projeleriniz için kimlik
+          olarak kullanılacaktır.
+        </div>
+      </div>
 
-  <label for="email">E-posta</label>
-  <input type="email" id="email" placeholder="ornek@mail.com" />
+      <div class="section-label">Tek tıkla kayıt</div>
+      <button type="button" class="btn-google" id="googleBtn">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
+        <span>Google ile kayıt ol</span>
+      </button>
 
-  <label for="password">Şifre</label>
-  <input type="password" id="password" placeholder="Şifreniz" />
+      <div class="divider">
+        <span class="line"></span>
+        <span>veya e-posta ile</span>
+        <span class="line"></span>
+      </div>
 
-  <button id="registerBtn">Kayıt Ol</button>
+      <form id="registerForm" autocomplete="on">
+        <div class="form-group">
+          <label for="nameInput">Adınız (isteğe bağlı)</label>
+          <input
+            id="nameInput"
+            type="text"
+            placeholder="Adınız (rapor için)"
+          />
+        </div>
 
-  <div class="error" id="error"></div>
+        <div class="form-group">
+          <label for="emailInput">E-posta adresi</label>
+          <input
+            id="emailInput"
+            type="email"
+            required
+            placeholder="ornek@mail.com"
+          />
+        </div>
 
-  <div class="alt">
-    Zaten hesabın var mı? <a href="/login.html">Giriş yap</a>
+        <button type="submit" class="btn-primary">Kayıt ol ve devam et</button>
+
+        <div class="helper-row">
+          <span>Zaten hesabın var mı?</span>
+          <a href="/login.html">Giriş yap</a>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <div class="disclaimer">
+          <strong>Uyarı:</strong> Sulama Asistanı şu anda beta aşamasındadır. Hesaplama ve tavsiyelerde
+          hata yapabilir; ticari tekliflerde mutlaka profesyonel kontrol yapın.
+        </div>
+      </form>
+    </div>
   </div>
-</div>
 
-<script>
-  const emailInput = document.getElementById("email");
-  const passwordInput = document.getElementById("password");
-  const registerBtn = document.getElementById("registerBtn");
-  const errorDiv = document.getElementById("error");
+  <script>
+    var registerForm = document.getElementById("registerForm");
+    var nameInput = document.getElementById("nameInput");
+    var emailInput = document.getElementById("emailInput");
+    var statusEl = document.getElementById("status");
+    var googleBtn = document.getElementById("googleBtn");
 
-  registerBtn.addEventListener("click", register);
-  passwordInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") register();
-  });
-
-  async function register() {
-    const email = emailInput.value.trim();
-    const password = passwordInput.value.trim();
-    if (!email || !password) {
-      errorDiv.textContent = "E-posta ve şifre zorunlu.";
-      return;
+    function setStatus(msg, type) {
+      statusEl.textContent = msg || "";
+      statusEl.className = "status " + (type || "");
     }
 
-    registerBtn.disabled = true;
-    errorDiv.textContent = "";
+    googleBtn.addEventListener("click", function () {
+      window.location.href = "/auth/google"; // Google OAuth route
+    });
 
-    try {
-      const res = await fetch("/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+    registerForm.addEventListener("submit", function (e) {
+      e.preventDefault();
 
-      const data = await res.json();
+      var email = (emailInput.value || "").trim();
+      var name = (nameInput.value || "").trim();
 
-      if (!res.ok || !data.success) {
-        errorDiv.textContent = data.error || "Kayıt başarısız.";
-        registerBtn.disabled = false;
+      if (!email || email.indexOf("@") === -1) {
+        setStatus("Geçerli bir e-posta adresi girin.", "error");
         return;
       }
 
-      const user = {
-        email: data.email,
-        limit: data.limit,
-        used: data.used,
-        remaining: data.remaining,
-      };
+      setStatus("Kayıt işlemi yapılıyor...", "ok");
 
-      localStorage.setItem("sulamaUser", JSON.stringify(user));
-      window.location.href = "/index.html";
-    } catch (err) {
-      console.error(err);
-      errorDiv.textContent = "Sunucuya ulaşılamadı.";
-      registerBtn.disabled = false;
-    }
-  }
-</script>
+      // Eğer backend'de /api/register yoksa, /api/login ile aynı mantığı kullanabilirsin.
+      fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email, name: name })
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data.error) {
+            setStatus(data.error, "error");
+            return;
+          }
 
+          // Kullanıcıyı localStorage'a yaz
+          localStorage.setItem("user", JSON.stringify({ email: data.email }));
+          setStatus("Kayıt tamamlandı, yönlendiriliyorsunuz...", "ok");
+
+          setTimeout(function () {
+            window.location.href = "/index.html";
+          }, 500);
+        })
+        .catch(function (err) {
+          console.error(err);
+          setStatus("Sunucuya bağlanırken bir hata oluştu.", "error");
+        });
+    });
+  </script>
 </body>
 </html>

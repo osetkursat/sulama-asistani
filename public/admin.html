@@ -14,30 +14,32 @@
       padding: 20px;
     }
     h1 {
-      font-size: 22px;
-      margin-bottom: 6px;
+      font-size: 24px;
+      margin-bottom: 4px;
     }
-    .sub {
-      font-size: 13px;
-      color: #9ca3af;
+    p {
+      margin-top: 0;
       margin-bottom: 16px;
+      color: #9ca3af;
+      font-size: 14px;
     }
     .card {
-      background: #0f172a;
+      background: #020617;
       border-radius: 12px;
+      border: 1px solid #374151;
       padding: 16px;
-      border: 1px solid #1f2937;
       margin-bottom: 16px;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.35);
     }
     .row {
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
       align-items: center;
-      margin-top: 8px;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
     }
     .input {
-      padding: 8px 10px;
+      padding: 7px 10px;
       border-radius: 8px;
       border: 1px solid #374151;
       background: #020617;
@@ -68,6 +70,10 @@
       background: linear-gradient(to right, #22c55e, #16a34a);
       color: #022c22;
       box-shadow: 0 10px 25px rgba(34, 197, 94, 0.3);
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 30px rgba(34, 197, 94, 0.45);
     }
     .btn-secondary {
       background: #111827;
@@ -124,16 +130,198 @@
       color: #9ca3af;
       margin-top: 4px;
     }
+
+    /* Modal (Kullanıcı Detay Popup) */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+    .modal {
+      width: 100%;
+      max-width: 720px;
+      background: #020617;
+      border-radius: 18px;
+      border: 1px solid #1f2937;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9);
+      padding: 18px 18px 14px;
+      color: #e5e7eb;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .modal-subtitle {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: #9ca3af;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .modal-close-btn:hover {
+      color: #f97373;
+    }
+    .modal-body {
+      font-size: 13px;
+      max-height: 70vh;
+      overflow-y: auto;
+      padding-top: 6px;
+    }
+    .modal-section {
+      margin-bottom: 14px;
+    }
+    .modal-section h4 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+      margin-bottom: 6px;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .info-item {
+      padding: 8px 9px;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: rgba(15, 23, 42, 0.9);
+    }
+    .info-item .label {
+      display: block;
+      font-size: 11px;
+      color: #9ca3af;
+      margin-bottom: 2px;
+    }
+    .info-item .value {
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .conversation-list {
+      border-radius: 12px;
+      border: 1px solid #1f2937;
+      background: rgba(15, 23, 42, 0.9);
+      max-height: 240px;
+      overflow-y: auto;
+    }
+    .conv-item {
+      padding: 8px 9px;
+      border-bottom: 1px solid #111827;
+    }
+    .conv-item:last-child {
+      border-bottom: none;
+    }
+    .conv-time {
+      font-size: 10px;
+      color: #6b7280;
+      margin-bottom: 2px;
+    }
+    .conv-question {
+      font-size: 12px;
+      color: #e5e7eb;
+    }
+    .conv-answer-preview {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+    .security-note {
+      font-size: 10px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
-  <h1>Sulama Asistanı • Admin Paneli</h1>
-  <div class="sub">
-    Buradan kullanıcıların limitlerini görebilir, artırabilir ve hafızalarını sıfırlayabilirsin.
+  <!-- Kullanıcı Detay Popup (Modal) -->
+  <div id="userDetailModal" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="detailEmail">kullanici@mail.com</div>
+          <div class="modal-subtitle" id="detailCreatedAt">Kayıt: -</div>
+        </div>
+        <button class="modal-close-btn" onclick="closeUserDetail()">×</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Kullanım bilgileri -->
+        <section class="modal-section">
+          <h4>Kullanım Özeti</h4>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="label">Günlük limit</span>
+              <span class="value" id="detailLimit">-</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Bugün kullanılan</span>
+              <span class="value" id="detailUsed">-</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Kalan hak</span>
+              <span class="value" id="detailRemaining">-</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Toplam soru</span>
+              <span class="value" id="detailTotalQuestions">-</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Son giriş ve durum -->
+        <section class="modal-section">
+          <h4>Hesap Durumu</h4>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="label">Son giriş</span>
+              <span class="value" id="detailLastLogin">-</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Durum</span>
+              <span class="badge badge-ok" id="detailStatus">Aktif</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Son konuşmalar -->
+        <section class="modal-section">
+          <h4>Son Konuşmalar</h4>
+          <div id="detailConversations" class="conversation-list">
+            <!-- JS ile doldurulacak -->
+          </div>
+        </section>
+
+        <p class="security-note">
+          ⚠️ Güvenlik: Şifre bilgisi burada gösterilmez ve dışarı çıkarılmaz.
+        </p>
+      </div>
+    </div>
   </div>
 
+  <h1>Sulama Asistanı - Admin Paneli</h1>
+  <p>Kullanıcıların soru limitlerini ve hafıza kayıtlarını buradan yönetebilirsin.</p>
+
   <div class="card">
-    <div>Admin anahtarını gir (ADMIN_KEY):</div>
+    <div class="row">
+      <div>Admin anahtarını gir (ADMIN_KEY):</div>
+    </div>
     <div class="row">
       <input id="adminKey" class="input" placeholder="ADMIN_KEY" style="min-width: 260px;" />
       <button class="btn btn-primary" onclick="connectAdmin()">Bağlan</button>
@@ -148,6 +336,20 @@
         <div class="status-text" id="userInfo">Henüz veri yok.</div>
       </div>
       <button class="btn btn-secondary" onclick="loadUsers()">Yenile</button>
+    </div>
+
+    <!-- Filtre / arama barı -->
+    <div class="row" style="margin:10px 0 8px; gap:8px; flex-wrap:wrap; align-items:center;">
+      <input
+        id="searchEmail"
+        class="input"
+        placeholder="E-posta ara..."
+        style="min-width:220px; max-width:260px;"
+      />
+      <label style="display:flex; align-items:center; gap:6px; font-size:12px;">
+        <input type="checkbox" id="filterFinished" style="margin:0;" />
+        <span>Sadece limiti bitenleri göster</span>
+      </label>
     </div>
 
     <table id="usersTable" style="display:none;">
@@ -168,6 +370,28 @@
   <script>
     let ADMIN_KEY = "";
     let USERS = [];
+    let FILTER_EMAIL = "";
+    let SHOW_ONLY_FINISHED = false;
+
+    // Filtre / arama kontrolleri
+    window.addEventListener("DOMContentLoaded", () => {
+      const searchInput = document.getElementById("searchEmail");
+      const filterFinished = document.getElementById("filterFinished");
+
+      if (searchInput) {
+        searchInput.addEventListener("input", () => {
+          FILTER_EMAIL = searchInput.value.trim();
+          renderUsers();
+        });
+      }
+
+      if (filterFinished) {
+        filterFinished.addEventListener("change", () => {
+          SHOW_ONLY_FINISHED = filterFinished.checked;
+          renderUsers();
+        });
+      }
+    });
 
     function setAdminStatus(text, ok = false) {
       const el = document.getElementById("adminStatus");
@@ -209,9 +433,8 @@
 
         const data = await res.json();
         USERS = data.users || [];
-
         renderUsers();
-        setAdminStatus("Bağlı", true);
+        setAdminStatus("Bağlandı", true);
       } catch (e) {
         console.error(e);
         setAdminStatus("Sunucuya ulaşılamadı.", false);
@@ -231,10 +454,34 @@
         return;
       }
 
-      table.style.display = "table";
-      info.textContent = `${USERS.length} kullanıcı listelendi.`;
+      // Filtre uygula
+      let list = USERS.slice();
 
-      USERS.forEach((u) => {
+      if (FILTER_EMAIL) {
+        const q = FILTER_EMAIL.toLowerCase();
+        list = list.filter((u) => u.email.toLowerCase().includes(q));
+      }
+
+      if (SHOW_ONLY_FINISHED) {
+        list = list.filter((u) => u.remaining <= 0);
+      }
+
+      if (!list.length) {
+        table.style.display = "none";
+        info.textContent = "Filtreye uyan kullanıcı bulunamadı.";
+        return;
+      }
+
+      // Kalan soruya göre artan, sonra e-posta
+      list.sort((a, b) => {
+        if (a.remaining !== b.remaining) return a.remaining - b.remaining;
+        return a.email.localeCompare(b.email);
+      });
+
+      table.style.display = "table";
+      info.textContent = `${list.length} kullanıcı listelendi.`;
+
+      list.forEach((u) => {
         const tr = document.createElement("tr");
 
         // E-posta
@@ -272,8 +519,16 @@
 
         // İşlemler
         const tdActions = document.createElement("td");
+
+        const btnDetail = document.createElement("button");
+        btnDetail.className = "btn btn-secondary";
+        btnDetail.textContent = "Detay";
+        btnDetail.onclick = () => openUserDetailByEmail(u.email);
+        tdActions.appendChild(btnDetail);
+
         const btnSave = document.createElement("button");
         btnSave.className = "btn btn-primary";
+        btnSave.style.marginLeft = "4px";
         btnSave.textContent = "Kaydet";
         btnSave.onclick = () => updateUser(u.email, Number(inputLimit.value), false, false);
 
@@ -309,12 +564,7 @@
         return;
       }
 
-      const payload = { email };
-      if (typeof limit === "number" && !Number.isNaN(limit)) {
-        payload.limit = limit;
-      }
-      if (resetUsed) payload.resetUsed = true;
-      if (resetMemory) payload.resetMemory = true;
+      const payload = { email, limit, resetUsed, resetMemory };
 
       try {
         const res = await fetch("/admin/update-user", {
@@ -326,13 +576,18 @@
           body: JSON.stringify(payload),
         });
 
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          alert(data.error || "Güncelleme başarısız.");
+        if (!res.ok) {
+          alert("Güncelleme başarısız: " + res.status);
           return;
         }
 
-        // USERS listesini güncelle
+        const data = await res.json();
+        if (!data.success) {
+          alert("Sunucu hatası: " + (data.error || "Bilinmeyen hata"));
+          return;
+        }
+
+        // Local listeyi güncelle
         const updated = data.user;
         const idx = USERS.findIndex((u) => u.email === updated.email);
         if (idx !== -1) {
@@ -344,6 +599,111 @@
       } catch (e) {
         console.error(e);
         alert("Sunucuya ulaşılamadı.");
+      }
+    }
+
+    // ---- Kullanıcı Detay Popup JS ----
+
+    function formatDate(d) {
+      if (!d) return "-";
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return "-";
+      return dt.toLocaleString("tr-TR");
+    }
+
+    function openUserDetail(user) {
+      document.getElementById("detailEmail").textContent = user.email || "-";
+      document.getElementById("detailCreatedAt").textContent =
+        "Kayıt: " + (user.createdAt ? formatDate(user.createdAt) : "-");
+
+      document.getElementById("detailLimit").textContent = user.limit ?? "-";
+      document.getElementById("detailUsed").textContent = user.used ?? "-";
+      const remaining =
+        user.remaining != null
+          ? user.remaining
+          : (user.limit || 0) - (user.used || 0);
+      document.getElementById("detailRemaining").textContent = remaining;
+      document.getElementById("detailTotalQuestions").textContent =
+        user.totalQuestions ?? "-";
+
+      document.getElementById("detailLastLogin").textContent =
+        user.lastLogin ? formatDate(user.lastLogin) : "-";
+
+      const statusEl = document.getElementById("detailStatus");
+      if (user.status === "blocked") {
+        statusEl.textContent = "Engelli";
+        statusEl.className = "badge";
+        statusEl.style.background = "rgba(248,113,113,0.15)";
+        statusEl.style.color = "#f97373";
+        statusEl.style.borderColor = "rgba(248,113,113,0.6)";
+      } else {
+        statusEl.textContent = "Aktif";
+        statusEl.className = "badge";
+        statusEl.style.background = "rgba(34,197,94,0.12)";
+        statusEl.style.color = "#4ade80";
+        statusEl.style.borderColor = "rgba(34,197,94,0.4)";
+      }
+
+      const convWrap = document.getElementById("detailConversations");
+      convWrap.innerHTML = "";
+
+      if (user.history && user.history.length > 0) {
+        user.history.slice(0, 20).forEach((h) => {
+          const div = document.createElement("div");
+          div.className = "conv-item";
+          const preview = (h.answerPreview || h.answer || "") || "";
+          const shortPreview =
+            preview.length > 140 ? preview.slice(0, 140) + "..." : preview;
+          div.innerHTML = `
+            <div class="conv-time">${h.time ? formatDate(h.time) : "-"}</div>
+            <div class="conv-question">Soru: ${h.question || "-"}</div>
+            <div class="conv-answer-preview">
+              Yanıt: ${shortPreview || "-"}
+            </div>
+          `;
+          convWrap.appendChild(div);
+        });
+      } else {
+        convWrap.innerHTML =
+          '<div class="conv-item"><div class="conv-question">Bu kullanıcı için kayıtlı konuşma bulunamadı.</div></div>';
+      }
+
+      document.getElementById("userDetailModal").style.display = "flex";
+    }
+
+    function closeUserDetail() {
+      document.getElementById("userDetailModal").style.display = "none";
+    }
+
+    async function openUserDetailByEmail(email) {
+      if (!ADMIN_KEY) {
+        alert("Önce admin anahtarını gir.");
+        return;
+      }
+      try {
+        const res = await fetch(
+          "/admin/user-details?email=" + encodeURIComponent(email),
+          {
+            headers: {
+              "x-admin-key": ADMIN_KEY,
+            },
+          }
+        );
+
+        if (!res.ok) {
+          alert("Kullanıcı detayı alınamadı: " + res.status);
+          return;
+        }
+
+        const data = await res.json();
+        // Güvenlik: şifre alanı gelse bile kullanma
+        if (data.password) {
+          delete data.password;
+        }
+        openUserDetail(data);
+      } catch (e) {
+        console.error(e);
+        alert("Kullanıcı detayı alınırken hata oluştu.");
       }
     }
   </script>

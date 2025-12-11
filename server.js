@@ -8,56 +8,224 @@ const path = require("path");
 const fs = require("fs");
 const OpenAI = require("openai");
 const PDFDocument = require("pdfkit");
+const session = require("express-session");
+const passport = require("passport");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
 
 const app = express();
+
+// ------------------------------------------------------
+// Session + Passport (Google OAuth için)
+// ------------------------------------------------------
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "sulama-secret",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Kullanıcıyı session'a yaz / geri al
+passport.serializeUser((user, done) => {
+  done(null, user.email);
+});
+
+passport.deserializeUser((email, done) => {
+  const users = loadUsers();
+  const u = users.find((x) => x.email === email);
+  done(null, u || null);
+});
+
+// ------------------------------------------------------
+// Body parser + statik dosyalar
+// ------------------------------------------------------
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "public")));
+
+// ------------------------------------------------------
+// SAYFA ROUTELARI (LOGIN / REGISTER)
+// ------------------------------------------------------
+app.get("/login", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "login.html"));
+});
+
+app.get("/register", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "register.html"));
+});
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 // ------------------------------------------------------
-// Veri dosyalarını JSON olarak yükleme
+// Sabitler & Dosyalar
+// ------------------------------------------------------
+const USERS_FILE = path.join(__dirname, "users.json");
+const ADMIN_KEY = process.env.ADMIN_KEY || "";
+const PRICE_LIST_FILE = path.join(__dirname, "price_list.json");
+
+// ------------------------------------------------------
+// Yardımcı fonksiyonlar
 // ------------------------------------------------------
 
-function loadJSON(fileName) {
-  const filePath = path.join(__dirname, "data", fileName);
-  if (!fs.existsSync(filePath)) {
-    console.warn("Uyarı: JSON dosyası bulunamadı:", filePath);
-    return [];
-  }
+// ------------------------------------------------------
+
+// Kullanıcı verisini oku
+function loadUsers() {
   try {
-    return JSON.parse(fs.readFileSync(filePath, "utf8"));
-  } catch (err) {
-    console.error("JSON parse hatası:", filePath, err);
+    if (!fs.existsSync(USERS_FILE)) return [];
+    const raw = fs.readFileSync(USERS_FILE, "utf8");
+    return JSON.parse(raw || "[]");
+  } catch (e) {
+    console.error("Kullanıcılar okunamadı:", e);
     return [];
   }
 }
 
-const PRICE_LIST     = loadJSON("price_list.json");
-const READY_SETS     = loadJSON("ready_sets.json");
-const NOZZLE_DATA    = loadJSON("nozzle_data.json");
-const PE100_FRICTION = loadJSON("pe100_friction.json");
-const DRIP_DATA      = loadJSON("drip_data.json");
-const ZONE_LIMITS    = loadJSON("zone_limits.json");
-const K_FACTORS      = loadJSON("k_factors.json");
-
-
-const USERS_FILE = path.join(__dirname, "users.json");
-const ADMIN_KEY  = process.env.ADMIN_KEY || "";
-
-function getProductPriceText(p) {
-  const raw =
-    p["Fiyat TL (KDV dahil)"] ??
-    p["Fiyat TL (KDV Dahil)"] ?? // olası varyasyon
-    p["Fiyat TL"] ??
-    p["Fiyat (TL)"] ??
-    p["Fiyat"] ??
-    p["Fiyat (KDV Dahil)"] ??
-    p["Fiyat (KDV dahil)"];
-
-  return raw ? String(raw) : "";
+// Kullanıcı verisini kaydet
+function saveUsers(users) {
+  try {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
+  } catch (e) {
+    console.error("Kullanıcılar kaydedilemedi:", e);
+  }
 }
 
+// PRICE_LIST'i belleğe al
+let PRICE_LIST = [];
+function loadPriceList() {
+  try {
+    if (!fs.existsSync(PRICE_LIST_FILE)) {
+      console.warn("price_list.json bulunamadı.");
+      PRICE_LIST = [];
+      return;
+    }
+    const raw = fs.readFileSync(PRICE_LIST_FILE, "utf8");
+    PRICE_LIST = JSON.parse(raw || "[]");
+    console.log(`PRICE_LIST yüklendi, ürün sayısı: ${PRICE_LIST.length}`);
+  } catch (e) {
+    console.error("PRICE_LIST okunamadı:", e);
+    PRICE_LIST = [];
+  }
+}
+loadPriceList();
+
+// ------------------------------------------------------
+// Express Ortamı
+// ------------------------------------------------------
+app.use(express.json({ limit: "2mb" }));
+
+// Statik dosyalar (public klasörü)
+app.use(express.static(path.join(__dirname, "public")));
+
+// Basit CORS (gerekirse)
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, x-admin-key, Authorization"
+  );
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// ------------------------------------------------------
+// Admin kontrol middleware
+// ------------------------------------------------------
+function requireAdmin(req, res, next) {
+  const key = req.headers["x-admin-key"];
+  if (!key || key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "Geçersiz admin anahtarı." });
+  }
+  next();
+}
+
+// ------------------------------------------------------
+// Basit kelime temizleme
+// ------------------------------------------------------
+function cleanText(raw) {
+  if (!raw) return "";
+  return String(raw).trim();
+}
+
+// ------------------------------------------------------
+// Kullanıcı bul / oluştur
+// ------------------------------------------------------
+function findOrCreateUserByEmail(email) {
+  let users = loadUsers();
+  let u = users.find((x) => x.email === email);
+  if (!u) {
+    u = {
+      email,
+      used: 0,
+      limit: 20,
+      memory: [],
+      projects: [],
+    };
+    users.push(u);
+    saveUsers(users);
+  }
+  return u;
+}
+
+// ------------------------------------------------------
+// Google OAuth Strategy
+// ------------------------------------------------------
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: "/auth/google/callback",
+    },
+    (accessToken, refreshToken, profile, done) => {
+      try {
+        const email =
+          profile.emails && profile.emails[0] && profile.emails[0].value;
+        if (!email) {
+          return done(new Error("Google hesabında e-posta bulunamadı"));
+        }
+
+        const user = findOrCreateUserByEmail(email.toLowerCase());
+        return done(null, user);
+      } catch (err) {
+        return done(err);
+      }
+    }
+  )
+);
+
+
+// ------------------------------------------------------
+// Kullanıcı limiti doldu mu?
+// ------------------------------------------------------
+function isUserLimitExceeded(user) {
+  const used = user.used || 0;
+  const limit = user.limit || 20;
+  return used >= limit;
+}
+
+// ------------------------------------------------------
+// getProductPriceText – fiyat metnini ortak fonksiyon
+// ------------------------------------------------------
+function getProductPriceText(p) {
+  // Birden fazla olası kolon ismi
+  const priceKeys = ["Fiyat", "Fiyat (TL)", "Fiyat TL", "SatisFiyat", "Price"];
+
+  for (const key of priceKeys) {
+    if (p[key] != null && p[key] !== "") {
+      return String(p[key]);
+    }
+  }
+  return "";
+}
 
 // ------------------------------------------------------
 // Basit ürün arama – PRICE_LIST içinden
@@ -69,805 +237,595 @@ function findRelatedProducts(query, limit = 10) {
   let q = String(query).toLowerCase();
 
   // Sayıları harflerden ayır → “tm24” → “tm 2 4”
-  q = q.replace(/(\d)/g, " $1 ");
+  q = q
+    .replace(/(\d+)/g, " $1 ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  const words = q.split(/\s+/).filter(Boolean);
+  // Sorgu kelimeleri
+  const words = q.split(" ").filter((w) => w.length > 1);
 
   const scored = PRICE_LIST.map((p) => {
-    const text = [
-      p["SKU"],
-      p["Ürün Adı"],
-      p["Model"],
-      p["Kategori"],
-      p["İşlev Grubu"],
-      p["Kullanım Yeri"],
-      p["Uygun Olduğu Sistemler"],
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
+    const name = String(p["Ürün Adı"] || p["Ad"] || "").toLowerCase();
+    const sku = String(p["SKU"] || p["Kod"] || "").toLowerCase();
+    const desc = String(p["Açıklama"] || p["Description"] || "").toLowerCase();
 
     let score = 0;
 
-    // Tam geçen ifade
-    if (text.includes(q)) score += 5;
-
-    // Kelime bazlı eşleşme
     for (const w of words) {
-      if (text.includes(w)) score += 2;
+      if (name.includes(w)) score += 3;
+      if (sku.includes(w)) score += 4;
+      if (desc.includes(w)) score += 1;
     }
 
-    // TM2 özel eşleşme kuralları
-    if (q.includes("tm2") && text.includes("tm2")) score += 10;
-    if (q.includes("4") && text.includes("4 ist") && text.includes("tm2"))
-      score += 10;
-
-    return { score, product: p };
+    return { p, score };
   });
 
   return scored
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
-    .map((x) => x.product);
+    .map((x) => x.p);
 }
 
 // ------------------------------------------------------
-// Sulama / sulama dışı sınıflandırma
+// Kategori sınıflandırma (sulama mı değil mi?)
 // ------------------------------------------------------
+function classifyIrrigationCategory(message) {
+  const text = message.toLowerCase();
 
-async function classifyIrrigation(message) {
-  try {
-    const completion = await client.chat.completions.create({
-      model: "gpt-4.1-mini",
-      temperature: 0,
-      messages: [
-        {
-          role: "system",
-          content:
-            "Kullanıcının mesajını sınıflandır. Eğer mesaj bahçe, tarla, sera veya peyzaj SULAMA sistemleri, sulama ürünleri, sulama projeleri, debi-basınç hesabı, otomatik sulama cihazları gibi konularla ilgiliyse sadece 'IRRIGATION' yaz. Diğer tüm konular (yazılım, JSON, kod, bilgisayar, internet, sağlık, ilişkiler, tarih, finans, oyun, eğitim vb.) için sadece 'NON_IRRIGATION' yaz. Başka hiçbir şey yazma."
-        },
-        { role: "user", content: String(message) }
-      ]
+  const irrigationKeywords = [
+    "sprink",
+    "sprinkler",
+    "yağmurlama",
+    "sulama",
+    "damla",
+    "pe100",
+    "pe 100",
+    "polietilen",
+    "vana",
+    "solenoid",
+    "kollektör",
+    "sprink başlık",
+    "rotor",
+    "rain bird",
+    "hunter",
+    "damlatıcı",
+    "nozul",
+    "nozzle",
+    "fıskiye",
+    "fiskiye",
+    "hortum",
+    "boru",
+    "hidrofor",
+    "basınç",
+    "debi",
+    "debisi",
+    "bahçe sulama",
+    "yeşil alan",
+    "peyzaj",
+    "tarla",
+    "sera",
+    "otomat",
+    "kontrol ünitesi",
+    "kontrol paneli",
+    "kontrol cihazı",
+    "valf",
+    "valve",
+    "filtre",
+    "süzgeç",
+    "damlama",
+    "sulandırma",
+    "spray",
+    "line",
+    "lateral",
+    "ana hat",
+    "ana boru",
+    "zone",
+    "bölge",
+    "zon",
+  ];
+
+  const nonIrrigationKeywords = [
+    "aşk",
+    "sevgili",
+    "ilişki",
+    "psikoloji",
+    "felsefe",
+    "programlama",
+    "yazılım",
+    "oyun",
+    "film",
+    "dizi",
+    "bilgisayar",
+    "telefon",
+    "monitor",
+    "mouse",
+    "klavye",
+    "oyuncu",
+    "kripto",
+    "borsa",
+    "yatırım",
+    "hisse",
+    "coin",
+    "bitcoin",
+    "ethereum",
+    "hukuk",
+    "mahkeme",
+    "dava",
+    "icra",
+    "boşanma",
+    "evlilik",
+    "ilişkiler",
+    "hayat tavsiyesi",
+    "kişisel gelişim",
+  ];
+
+  let scoreIrr = 0;
+  let scoreNon = 0;
+
+  for (const k of irrigationKeywords) {
+    if (text.includes(k)) scoreIrr += 2;
+  }
+  for (const k of nonIrrigationKeywords) {
+    if (text.includes(k)) scoreNon += 2;
+  }
+
+  if (scoreIrr === 0 && scoreNon === 0) return "UNKNOWN";
+  if (scoreIrr >= scoreNon) return "IRRIGATION";
+  return "NON_IRRIGATION";
+}
+
+const STEP_INSTRUCTION = `
+HER ZAMAN kısa yaz.
+Asla tüm çözümü tek seferde verme.
+Sadece ilk adımı yaz ve mutlaka "Devam edeyim mi?" diye sor.
+Kullanıcı izin vermedikçe bir sonraki adımı üretme.
+Büyük listeleri asla tek cevapta yazma.
+`;
+// ------------------------------------------------------
+// Ana Prompt – Sistem mesajı
+// ------------------------------------------------------
+function buildSystemPrompt() {
+  return `
+Sen "Sulama Asistanı" isimli profesyonel bir peyzaj ve bahçe sulama danışmanısın. 
+Türkiye şartlarına göre villa bahçeleri, peyzaj alanları ve küçük tarımsal alanlar için:
+- Sulama projelendirme,
+- Ürün seçimi ve kombinasyonu,
+- Tesisat şeması ve zonlama,
+- Basınç / debi değerlendirmesi,
+- Maliyet çıkarma
+konularında uzman, serin kanlı ve net konuşan bir uzmansın.
+
+GENEL DAVRANIŞ KURALLARI
+- ChatGPT gibi konuş: kısa, net, hızlı.
+- Cevabı ASLA tek seferde uzun yazma.
+- Büyük işlemleri PARÇALI ver:
+  1) Kısa analiz + 1–2 soru
+  2) Kullanıcı “devam et” derse malzeme listesinin ilk kısmı
+  3) Kullanıcı isterse detaylı liste
+  4) Kullanıcı isterse fiyat tablosu
+- Kullanıcı onay vermeden sonraki adıma geçme.
+- Uzun paragraflar yok → sadece maddeli, kısa cümleler.
+- İşçilik/montaj fiyatı verme.
+
+PRICE_LIST KURALLARI
+- Ürün price_list’te varsa mutlaka fiyat kullan.
+- Fiyat alanı boşsa: “price_list’te fiyat yok, yerelden sorulmalı” de.
+- Listede olmayan ürünün fiyatını uydurma.
+- Fiyatları KDV dahil yaz.
+
+MALZEME LİSTESİ / TEKLİF CEVAPLARI
+- Önce malzeme listesini çıkar (Ürün, Açıklama, Adet / Metre).
+- Sonra ayrı bölümde “Fiyatlı tablo” ver:
+  - Kolonlar: Ürün, Açıklama, Adet, Birim Fiyat (TL), Toplam (TL).
+- PRICE_LIST’te olmayan kalemleri tablonun altına “Yerelden fiyat alınacak kalemler” başlığıyla ayrı listele.
+- İşçilik maliyeti, montaj ücreti, proje çizim bedeli vb. HİÇBİRİ için fiyat yazma.
+
+OTOMATİK MALZEME SEÇİM KURALLARI
+Bu kurallar, bahçe için malzeme listesi çıkarırken ve teklif hazırlarken GEÇERLİDİR.
+
+1) KONTROL ÜNİTESİ SEÇİMİ
+- Müşteri elektrikli (220 V) sistem istiyorsa:
+  - Sadece 1 model öner:
+    - Rain Bird ESP-TM2 serisinden, istasyon sayısına uygun bir model seç (ör: 4 istasyon gerekliyse ESP-TM2 4).
+- Müşteri pilli sistem (elektrik yok) istiyorsa:
+  - Sadece 1 model öner:
+    - Rain Bird ESP-9V serisinden, istasyon sayısına uygun bir model seç.
+- Birden fazla kontrol ünitesi seçeneğini aynı anda listeleme; müşteriye TEK öneri sun.
+
+2) SPREY vs ROTOR SEÇİMİ (Bahçe alanına göre)
+- Küçük bahçeler (kabaca 0–300 m²):
+  - Ağırlıklı olarak sprey sprinkler (sprey sprink) öner.
+- Orta-büyük bahçeler (300–800 m² arası):
+  - Gerekirse karışık kullanım (uygun yerlerde sprey, uygun yerlerde rotor) önerebilirsin.
+- Büyük bahçeler (800 m² ve üzeri):
+  - Ağırlıklı olarak rotor sprinkler öner.
+- Cevapta bahçe alanını yorumlayarak “Bu alan için sprey/rotor tercih sebebi şu...” diye 1–2 cümle ile açıkla.
+
+3) SOLENOID VANA MODELİ (Boru çapı ve elektrik durumuna göre)
+Bahçede ELEKTRİK VARSA (24 V AC):
+- Ana boru 1" ise: Rain Bird 100-HV 24 V modelini seç.
+- Ana boru 1 1/2" ise: Rain Bird 150-PGA 24 V modelini seç.
+- Ana boru 2" ise: Rain Bird 200-PGA 24 V modelini seç.
+
+Bahçede ELEKTRİK YOKSA (PİLLİ sistem, 9 V):
+- Ana boru 1" ise: Rain Bird 100-HV 9 V modelini seç.
+- Ana boru 1 1/2" ise: Rain Bird 150-PGA 9 V modelini seç.
+- Ana boru 2" ise: Rain Bird 200-PGA 9 V modelini seç.
+
+4) PRİZ KOLYE ADEDİ
+- Sprink + rotor toplam adedi kadar ANA BORUYA UYGUN priz kolye seç.
+  - Örnek: Toplam 12 sprink/rotor varsa → 12 adet ana boru çapına uygun priz kolye.
+
+5) LATERAL HAT BAĞLANTISI
+- Lateral hat PE boru çapı 20 mm kabul edilir (küçük/orta bahçeler için).
+- Priz kolye sayısının 2 katı kadar 20 mm lateral PE boruya uygun KAPLIN ERKEK DİRSEK seç:
+  - 1 adet priz kolye çıkışına,
+  - 1 adet sprink/rotor altına gelecek şekilde.
+  - Örnek: 12 priz kolye varsa → 24 adet 20 mm kaplin erkek dirsek.
+
+6) KOLLEKTÖR SEÇİMİ
+- Solenoid vana sayısı kadar Rain Bird MTT-100 kollektör seç.
+  - Örnek: 3 solenoid vana → 3 adet MTT-100.
+
+7) ANA BORUYA GEÇİŞ ADAPTÖRLERİ
+- Solenoid vana sayısı kadar, vana çıkışından ANA BORUYA geçmek için uygun çapta KAPLIN ERKEK ADAPTÖR seç.
+  - Örnek: 3 solenoid vana → 3 adet kaplin erkek adaptör.
+
+8) KAPLIN TAPA
+- Solenoid vana sayısı kadar, ana boru üzerinde kullanılmak üzere ANA BORU ÇAPINA UYGUN kaplin tapa seç.
+  - Örnek: 3 solenoid vana → 3 adet kaplin tapa.
+
+9) SİNYAL KABLOSU SEÇİMİ (İstasyon/solenoid sayısına göre)
+- 1–2 solenoid vana → 3 damarlı (3 renk) sinyal kablosu
+- 3–4 solenoid vana → 5 damarlı (5 renk) sinyal kablosu
+- 5–6 solenoid vana → 7 damarlı (7 renk) sinyal kablosu
+- 7–8 solenoid vana → 9 damarlı (9 renk) sinyal kablosu
+- 9–12 solenoid vana → 13 damarlı (13 renk) sinyal kablosu
+- Kablo uzunluğunu proje durumuna göre yaklaşık metre cinsinden yaz (ör: 25–50 m).
+
+10) VANA KUTUSU SEÇİMİ
+- 1 solenoid vana → 6" vana kutusu
+- 2 solenoid vana → 10" vana kutusu
+- 3 solenoid vana → 12" vana kutusu
+- 4 solenoid vana → 14" vana kutusu
+- Vana sayısına göre TEK tip vana kutusu öner, gereksiz alternatif verme.
+
+11) ANA BORU FİTTİNGLERİ
+- Ana boru hangi çaptaysa, o çapa uygun:
+  - 2 adet dirsek
+  - 2 adet te
+  - 2 adet manşon
+  ekle.
+- Açıklamada “İş sırasında çıkabilecek ekstra dönüşler/ekler için yedek fittings” diye belirt.
+
+12) LAZIM OLABİLECEK YARDIMCI ÜRÜNLER
+- Aşağıdaki ürünleri “Yardımcı malzemeler” başlığı altında listeye ekle:
+  - Boru kesme makası – 1 adet
+  - Pah açma aparatı – 1 adet
+  - Teflon bant – 2 adet
+  - Elektrik bandı – 1–2 adet
+  - İş eldiveni – 1 çift
+  - Lokma uç seti veya uygun lokma uç – 1 set
+- Bu kalemler için de PRICE_LIST’te varsa fiyat yaz, yoksa “yerelden fiyat alınacak” diye belirt.
+
+13) İŞÇİLİK FİYATI YOK
+- ASLA işçilik / montaj / uygulama ücreti hesaplama.
+- Müşteri işçilik sorarsa:
+  - “Ben malzeme ve sistem tasarımında yardımcı oluyorum; işçilik fiyatı için yerel bir uygulamacıdan teklif almalısınız.” şeklinde kısaca açıkla.
+
+KAPSAM KURALI
+- Bahçe, peyzaj, sulama, tesisat, pompa, boru, vana, filtre, otomasyon, basınç, debi, sprinkler, damla sulama gibi konularda HER ZAMAN sulama uzmanı olarak detaylı ama KISA ve ADIM ADIM cevap ver.
+- Sulama ile alakası olmayan konularda nazikçe kapsam dışı olduğunu belirtip, sadece çok kısa yardımcı ol.
+
+HESAPLAMA ve KABULLER:
+- Küçük villa / peyzaj bahçelerinde ana boru genelde 32mm veya 40mm PE100 seç.
+- Lateral (sprinkler hatları) genelde 20mm PE100 kabul et.
+- Sprinkler ve rotor sayısını debi ve basınca göre mantıklı zonlara böl.
+- Yetersiz basınç / debi görürsen mutlaka uyar, çözüm öner.
+- Fiyat sorulursa sadece verilen ürün listesi veya CSV’deki veriler üzerinden konuş. Uydurma fiyat verme.
+
+ÜRÜN EŞLEME:
+- Kullanıcı ürün kodu (SKU) veya isim yazarsa, mutlaka ürün eşlemesi yapmaya çalış.
+- CSV’den bulabildiğin ürünleri “mantıklı bir kombinasyon” halinde listele.
+- Fiyatları yazarken TL olarak “KDV dahil” olduğunu belirt.
+- Kullanıcı fiyat sormuyorsa durduk yere TL yazma.
+
+FORMAT
+- Mesaja giriş 1 kısa cümle.
+- Sonra “Adım 1:” şeklinde kısa maddeli çıktı.
+- Her adımın sonunda: “Devam edeyim mi?”
+
+PDF PROJELER:
+- Kullanıcı özel tasarım isterse alanı, su kaynağını, basıncı, debiyi, kontrol cihazını sor.
+- Mantıklı bir zonlama + ürün seti + kısa açıklama üret.
+- Çıktıyı tablolara dönüştürülebilir, temiz bir metin olarak yaz (başlıklar, alt başlıklar, madde işaretleri).
+
+UNUTMA:
+- Odak noktan SULAMA. Konu tamamen alakasızsa, kibarca reddet.
+- Kullanıcının bütçesini, bakım kolaylığını ve Türkiye’de bulunabilirliği dikkate al.
+`;
+}
+
+// ------------------------------------------------------
+// PDF Teklif Oluşturma
+// ------------------------------------------------------
+function createOfferPDF(projectData, res) {
+  const doc = new PDFDocument({
+    margin: 40,
+    size: "A4",
+  });
+
+  // PDF response ayarları
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", 'attachment; filename="teklif.pdf"');
+
+  doc.pipe(res);
+
+  // Başlık
+  doc
+    .fontSize(20)
+    .fillColor("#1b8a5a")
+    .text("Sulama Sistemi Teklif Raporu", { align: "center" })
+    .moveDown(1.5);
+
+  // Firma bilgileri (örnek)
+  doc
+    .fontSize(10)
+    .fillColor("#000000")
+    .text("Firma: Sulama Asistanı", { align: "left" })
+    .text("Adres: Ankara / Türkiye")
+    .text("Telefon: 0 (312) 000 00 00")
+    .text("E-posta: info@sulamaasistani.com")
+    .moveDown(1);
+
+  // Proje Özeti
+  doc
+    .fontSize(14)
+    .fillColor("#1b8a5a")
+    .text("Proje Özeti", { underline: true })
+    .moveDown(0.5);
+
+  if (projectData && projectData.summary) {
+    doc
+      .fontSize(11)
+      .fillColor("#000000")
+      .text(projectData.summary, {
+        align: "left",
+      })
+      .moveDown(1);
+  } else {
+    doc
+      .fontSize(11)
+      .fillColor("#000000")
+      .text("Proje özeti bilgisi bulunamadı.", { align: "left" })
+      .moveDown(1);
+  }
+
+  // Tablolar
+  if (Array.isArray(projectData?.tables)) {
+    projectData.tables.forEach((table, index) => {
+      doc
+        .addPage()
+        .fontSize(14)
+        .fillColor("#1b8a5a")
+        .text(table.title || `Tablo ${index + 1}`, { underline: true })
+        .moveDown(0.5);
+
+      const headers = table.headers || [];
+      const rows = table.rows || [];
+
+      // Basit tablo çizimi
+      const startX = 40;
+      let startY = doc.y + 10;
+      const rowHeight = 18;
+
+      doc.fontSize(10).fillColor("#000000");
+
+      // Header çiz
+      headers.forEach((h, i) => {
+        doc.text(h, startX + i * 120, startY, { width: 110 });
+      });
+
+      startY += rowHeight;
+
+      rows.forEach((r) => {
+        r.forEach((cell, i) => {
+          doc.text(String(cell), startX + i * 120, startY, { width: 110 });
+        });
+        startY += rowHeight;
+        if (startY > 750) {
+          doc.addPage();
+          startY = 60;
+        }
+      });
     });
+  }
 
-    const raw =
-      completion.choices?.[0]?.message?.content?.trim().toUpperCase() || "";
+  // Toplam Fiyat Bölümü
+  doc.addPage().fontSize(14).fillColor("#1b8a5a").text("Toplam Teklif", {
+    underline: true,
+  });
 
-    if (raw === "IRRIGATION" || raw === "NON_IRRIGATION") {
-      return raw;
+  const total = projectData?.totalPrice;
+  if (typeof total === "number") {
+    doc
+      .moveDown(1)
+      .fontSize(12)
+      .fillColor("#000000")
+      .text(`Genel Toplam (KDV dahil): ${total.toLocaleString("tr-TR")} TL`);
+  } else {
+    doc
+      .moveDown(1)
+      .fontSize(12)
+      .fillColor("#000000")
+      .text("Toplam fiyat bilgisi belirtilmemiştir.");
+  }
+
+  doc.end();
+}
+
+// ------------------------------------------------------
+// POST /api/pdf – Teklif PDF oluştur
+// ------------------------------------------------------
+app.post("/api/pdf", (req, res) => {
+  const { project } = req.body || {};
+  if (!project) {
+    return res.status(400).json({ error: "project verisi eksik." });
+  }
+
+  createOfferPDF(project, res);
+});
+
+// ------------------------------------------------------
+// Google OAuth Routes
+// ------------------------------------------------------
+
+// Google ile giriş/kayıt başlat
+app.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+// Google callback
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", { failureRedirect: "/login.html" }),
+  (req, res) => {
+    const email = req.user && req.user.email;
+    // Başarılı girişten sonra chate yönlendir,
+// e-postayı query string ile gönderiyoruz
+    if (email) {
+      res.redirect("/index.html?googleEmail=" + encodeURIComponent(email));
+    } else {
+      res.redirect("/login.html");
     }
-
-    if (raw.includes("NON")) return "NON_IRRIGATION";
-    return "IRRIGATION";
-  } catch (err) {
-    console.error("Sınıflandırma hatası, varsayılan IRRIGATION:", err);
-    // Sınıflandırmada problem olursa kullanıcıyı bloklamamak için sulama kabul et
-    return "IRRIGATION";
   }
-}
+);
 
-// ------------------------------------------------------
-// Middleware
-// ------------------------------------------------------
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Statik dosyalar (public klasörü)
-app.use(express.static(path.join(__dirname, "public")));
-
-// ------------------------------------------------------
-// Yardımcı fonksiyonlar (kullanıcılar)
-// ------------------------------------------------------
-
-function loadUsers() {
-  if (!fs.existsSync(USERS_FILE)) {
-    const defaultUser = {
-      email: "deneme@deneme.com",
-      password: "1234",
-      limit: 50,
-      used: 0,
-      memory: [],
-      projects: [],
-    };
-    fs.writeFileSync(USERS_FILE, JSON.stringify([defaultUser], null, 2), "utf8");
-    return [defaultUser];
-  }
-
-  const raw = fs.readFileSync(USERS_FILE, "utf8");
-  if (!raw.trim()) return [];
-
-  try {
-    return JSON.parse(raw);
-  } catch (err) {
-    console.error("users.json parse hatası:", err);
-    return [];
-  }
-}
-
-function saveUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
-}
-
-// Admin kontrol middleware
-function requireAdmin(req, res, next) {
-  const key = req.headers["x-admin-key"];
-  if (!key || key !== ADMIN_KEY) {
-    return res.status(403).json({ error: "Geçersiz admin anahtarı." });
-  }
-  next();
-}
-
-// ------------------------------------------------------
-// Auth / Kullanıcı Endpoint'leri
-// ------------------------------------------------------
-
-// POST /register
-app.post("/register", (req, res) => {
+// Kullanıcı kayıt (e-posta + şifre)
+// Body: { email: "...", password: "..." }
+app.post("/api/register", (req, res) => {
   const { email, password } = req.body || {};
 
-  if (!email || !password) {
-    return res.status(400).json({ error: "email ve password zorunlu." });
+  if (!email || typeof email !== "string") {
+    return res.status(400).json({ error: "Geçersiz e-posta." });
   }
 
-  let users = loadUsers();
-  const existing = users.find((u) => u.email === email);
+  if (!password || typeof password !== "string") {
+    return res.status(400).json({ error: "Şifre zorunludur." });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail.includes("@")) {
+    return res.status(400).json({ error: "Geçersiz e-posta formatı." });
+  }
+
+  const users = loadUsers();
+  const existing = users.find((u) => u.email === cleanEmail);
+
   if (existing) {
-    return res.status(409).json({ error: "Bu e-posta ile kullanıcı zaten var." });
+    return res.status(400).json({ error: "Bu e-posta zaten kayıtlı." });
   }
 
   const newUser = {
-    email,
-    password,
-    limit: 20,
+    email: cleanEmail,
+    password,         // not: gerçek ortamda hash’lenmeli
     used: 0,
-    memory: [],
-    projects: [],
+    limit: 20,        // istersen DEFAULT_DAILY_LIMIT gibi bir sabite bağla
   };
 
   users.push(newUser);
   saveUsers(users);
 
-  return res.json({
-    success: true,
+  res.json({
     email: newUser.email,
-    limit: newUser.limit,
     used: newUser.used,
-    remaining: newUser.limit - newUser.used,
+    limit: newUser.limit,
+    remaining: newUser.limit,
   });
 });
 
-// POST /login
-app.post("/login", (req, res) => {
+
+// ------------------------------------------------------
+// KULLANICI & ADMIN API'LERİ
+// ------------------------------------------------------
+
+// Kullanıcı login (e-posta + şifre)
+// Body: { email: "...", password: "..." }
+app.post("/api/login", (req, res) => {
   const { email, password } = req.body || {};
 
-  if (!email || !password) {
-    return res.status(400).json({ error: "email ve password zorunlu." });
+  if (!email || typeof email !== "string") {
+    return res.status(400).json({ error: "Geçersiz e-posta." });
+  }
+
+  if (!password || typeof password !== "string") {
+    return res.status(400).json({ error: "Şifre zorunludur." });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail.includes("@")) {
+    return res.status(400).json({ error: "Geçersiz e-posta formatı." });
+  }
+
+  // Kullanıcıları JSON'dan oku
+  const users = loadUsers(); // sende zaten var olması lazım
+  const user = users.find((u) => u.email === cleanEmail);
+
+  if (!user) {
+    return res
+      .status(401)
+      .json({ error: "Bu e-posta ile kayıtlı kullanıcı bulunamadı." });
+  }
+
+  // Şifre kontrolü (prototip → düz metin; ileride hash'leriz)
+  if (!user.password) {
+    return res
+      .status(400)
+      .json({ error: "Bu kullanıcı için henüz şifre tanımlanmamış." });
+  }
+
+  if (user.password !== password) {
+    return res.status(401).json({ error: "Şifre hatalı." });
+  }
+
+  // Başarılı giriş
+  res.json({
+    email: user.email,
+    used: user.used || 0,
+    limit: user.limit || 20,
+    remaining: (user.limit || 20) - (user.used || 0),
+  });
+});
+
+
+// Kullanıcı profilini getir (limit ve kullanım)
+app.post("/api/profile", (req, res) => {
+  const { email } = req.body || {};
+  if (!email) {
+    return res.status(400).json({ error: "E-posta eksik." });
   }
 
   const users = loadUsers();
-  const user  = users.find((u) => u.email === email);
-
-  if (!user || user.password !== password) {
-    return res.status(401).json({ error: "E-posta veya şifre hatalı." });
-  }
-
-  const remaining = user.limit - user.used;
-
-  return res.json({
-    success: true,
-    email: user.email,
-    limit: user.limit,
-    used: user.used,
-    remaining,
-  });
-});
-
-// POST /purchase – paket satın alma (soru limitini artır)
-app.post("/purchase", (req, res) => {
-  const { email, packageType } = req.body || {};
-  if (!email || !packageType) {
-    return res.status(400).json({ error: "email ve packageType zorunlu." });
-  }
-
-  let users = loadUsers();
   const user = users.find((u) => u.email === email);
   if (!user) {
     return res.status(404).json({ error: "Kullanıcı bulunamadı." });
   }
 
-  let add = 0;
-  if (packageType === "mini") add = 50;
-  else if (packageType === "pro") add = 200;
-  else if (packageType === "bayi") add = 1000;
-  else {
-    return res.status(400).json({ error: "Geçersiz paket tipi." });
-  }
-
-  user.limit += add;
-  saveUsers(users);
-
-  return res.json({
-    success: true,
+  res.json({
     email: user.email,
-    limit: user.limit,
-    used: user.used,
-    remaining: user.limit - user.used,
+    used: user.used || 0,
+    limit: user.limit || 20,
+    remaining: (user.limit || 20) - (user.used || 0),
   });
 });
 
-// ------------------------------------------------------
-// STREAMING /chat endpoint'i
-// ------------------------------------------------------
+// ADMIN API BLOĞU
+// -------------------------------------------
 
-app.post("/chat", async (req, res) => {
-  let { message, user, mode, designData } = req.body;
-
-  // 1) Kullanıcı doğrulama (DEV modu: user gelmezse guest kullan)
-  if (!user || !user.email) {
-    user = { email: "guest@sulamaasistani.local" };
-  }
-
-  // 2) Sistemdeki kullanıcıyı çek / yoksa oluştur
-  let users = loadUsers();
-  let currentUser = users.find((u) => u.email === user.email);
-
-  if (!currentUser) {
-    currentUser = {
-      email: user.email,
-      password: "",
-      limit: 9999,          // Lokal geliştirme için bol limit
-      used: 0,
-      memory: [],
-      projects: [],
-      createdAt: new Date().toISOString()
-    };
-
-    users.push(currentUser);
-    saveUsers(users);
-  }
-
-  // 3) Hafıza (son 20 mesaj) – BUNU currentUser oluştuKTAN SONRA yap
-  const history = Array.isArray(currentUser.memory)
-    ? currentUser.memory.slice(-20)
-    : [];
-
-
-  // 4) Sulama / sulama dışı sınıflandırma
-  const category = await classifyIrrigation(message);
-
-  // --- Sulama bağlamı var mı? (geçmiş user mesajlarına bak) ---
-  const hasHistory = Array.isArray(history) && history.length > 0;
-
-  let irrigationContextText = "";
-  if (hasHistory) {
-    irrigationContextText = history
-      .filter((m) => m.role === "user")
-      .map((m) => (m.content || "").toLowerCase())
-      .join(" ");
-  }
-
-  const hasIrrigationInHistory =
-    irrigationContextText.includes("bahçe") ||
-    irrigationContextText.includes("bahce") ||
-    irrigationContextText.includes("sulama") ||
-    irrigationContextText.includes("sprink") ||
-    irrigationContextText.includes("sprinkler") ||
-    irrigationContextText.includes("damla") ||
-    irrigationContextText.includes("damlama") ||
-    irrigationContextText.includes("vana") ||
-    irrigationContextText.includes("m²") ||
-    irrigationContextText.includes("m2");
-
-  // Kullanıcı kısa yanıt istiyorsa (varsayılan), modeli en fazla 3 cümleye ZORLA
-let finalUserMessage = message;
-const isDetailRequest = /detaylı|detayli|uzun|hesap|metraj|tam liste|tam malzeme|hidrolik|basınç hesabı/i.test(message);
-
-if (!isDetailRequest) {
-  finalUserMessage =
-    "KURAL: Bana en fazla 3 cümlelik KISA bir cevap ver. Liste, paragraf, başlık, teknik açıklama, uzun metin yasak. Soruma sadece kısa, net ve tek noktadan cevap ver.\nKULLANICI MESAJI: " +
-    message;
-}
-
-
-  // --- Mesaj tipi: sayı mı, devam isteği mi? ---
-  const msg = (message || "").toLowerCase();
-
-  const isNumericFollowup =
-    typeof msg === "string" &&
-    msg.length <= 30 &&
-    /\d/.test(msg) &&
-    hasHistory;
-
-  // Kısa devam sorularını, ürün listesi ve fiyat isteyen soruları da kapsa
-  const continuationKeywords = [
-    "detay",
-    "detaylı",
-    "devam",
-    "anlat",
-    "hangi",
-    "nasıl",
-    "neresi",
-    "nereden",
-    "hangisi",
-    "tamam",
-    "yaz",
-    "evet",
-    // Ürün / liste / fiyat odaklı devam soruları
-    "ürün",
-    "urun",
-    "liste",
-    "listesini",
-    "ürün listesi",
-    "urun listesi",
-    "ürün listesini",
-    "urun listesini",
-    "fiyat",
-    "fiyatı",
-    "fiyatı nedir",
-    "fiyatları",
-    "fiyatlarını",
-    "fiyat bilgisi",
-    "fiyatlarıyla",
-    "fiyatlariyla",
-    "verir misin",
-    "yazar mısın",
-    "yazarmısın",
-    "çıkarır mısın",
-    "cikarir misin"
-  ];
-
-  const isContinuationFollowup =
-    typeof msg === "string" &&
-    msg.length <= 160 && // "tam ürün listesini fiyatlarıyla verir misin?" gibi cümlelere izin
-    continuationKeywords.some((kw) => msg.includes(kw)) &&
-    hasHistory;
-
-  // --- Etkin kategori ---
-  let effectiveCategory = category;
-
-  // Eğer model "NON_IRRIGATION" dese bile,
-  // geçmişte sulama konuşuyorsak ve bu mesaj sadece kısa bir devam isteğiyse → SULAMA say
-  if (
-    category === "NON_IRRIGATION" &&
-    hasIrrigationInHistory &&
-    (isNumericFollowup || isContinuationFollowup)
-  ) {
-    effectiveCategory = "IRRIGATION";
-  }
-
-  // NON_IRRIGATION kontrolü artık effectiveCategory üzerinden
-  if (effectiveCategory === "NON_IRRIGATION") {
-    const remaining = currentUser.limit - currentUser.used;
-    res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    res.setHeader("Transfer-Encoding", "chunked");
-    res.setHeader("X-Remaining", String(remaining));
-
-    res.write(
-      "Bu soru sulama kapsamım dışında. Ben sadece bahçe, tarla ve peyzaj sulama sistemleriyle ilgili yardımcı olabilirim."
-    );
-    return res.end();
-  }
-
-
-  // 5) Ürün eşleme: soruya göre PRICE_LIST’ten ilgili ürünleri bul
-  const relatedProducts = findRelatedProducts(message, 8);
-
-  let productContext = "";
-  if (relatedProducts.length > 0) {
-    productContext =
-      "İLGİLİ ÜRÜNLER VE FİYATLAR (CSV'den):\n" +
-      relatedProducts
-        .map((p) => {
-          // Tüm kolon varyasyonlarını kullanan ortak fonksiyon
-          const temizFiyat = getProductPriceText(p).trim();
-
-          let fiyatMetni;
-
-          // Fiyat boşsa veya 0 ise “fiyat yok” de
-          if (
-            !temizFiyat ||
-            temizFiyat === "0" ||
-            temizFiyat === "0,00" ||
-            temizFiyat === "0.00"
-          ) {
-            fiyatMetni =
-              "FİYAT BİLGİSİ CSV'DE YOK (bu ürün için fiyat UYDURMA, müşteriye fiyat veremediğini söyle)";
-          } else {
-            fiyatMetni = `${temizFiyat} TL (CSV)`;
-          }
-
-          return `- SKU: ${p["SKU"]} | Ürün: ${p["Ürün Adı"]} | Fiyat: ${fiyatMetni}`;
-        })
-        .join("\n");
-  }
-
-  // 6) Sulama Asistanı sistem prompt'u
-  let systemPrompt = `
-Sen “Sulama Asistanı” adında, Türkiye şartlarına göre çalışan profesyonel bir sulama danışmanısın.
-Villa / peyzaj bahçeleri için sprinkler ve damla sulama projelendirme, ürün seçimi, maliyet mantığı ve hazır set önerileri konusunda uzmansın.
-
-KESİN KURAL
-- Sulama ile ilgisi olmayan (ör: yazılım, JSON, bilgisayar, internet, ilişki, tarih, finans, oyun, eğitim vb.) sorulara cevap verme.
-- Böyle bir soru gelirse sadece kısaca: 
-  "Bu soru sulama sistemleriyle ilgili değil. Ben sadece bahçe sulama, damlama, sprinkler ve otomatik sulama sistemleriyle ilgili yardımcı olabilirim."
-  de ve konuyu sulamaya çek.
-
-DİL ve TON
-- Kullanıcıyla her zaman TÜRKÇE konuş.
-- Samimi ama profesyonel ol; teknik bilgiyi sade dille anlat.
-- Gereksiz süslü, duygusal, edebî cümleler KULLANMA.
-- Kullanıcıyı asla küçümseme; sıfır bilgili bir bahçe sahibi bile her adımı anlayabilmeli.
-
-GENEL DAVRANIŞ (ÇOK ÖNEMLİ)
-
-- Kullanıcının sorusunu önce niyetine göre analiz et:
-  1) Sorunun amacı kısa bir bilgi almak mı?
-  2) Yoksa mühendislik/teknik analiz, basınç hesabı, zone planı, proje detayı gibi derin bir açıklama mı istiyor?
-
---------------------------------------------
-1) KISA SORULARDA (varsayılan format)
---------------------------------------------
-- Genel, kısa, yönlendirici veya basit bilgi isteyen sorularda cevabın:
-  → EN FAZLA 3 CÜMLE olacak.
-- Format her zaman şu:
-  1) Kullanıcının isteğini tek bir cümleyle özetle.
-  2) Zone / boru çapı / ürün tipi gibi temel yönlendirmeyi tek cümlede ver.
-  3) Bir sonraki adımı belirten 1 cümlelik yönlendirme yap.
-- Bu modda:
-  • Madde işareti kullanma.
-  • Tablo verme.
-  • Uzun paragraf yazma.
-  • Teknik sayı detayına girme (bar, L/dk vs).
-  • Proje şeması, hesap veya metraj çıkarma.
-- Kısa format; “Tamam”, “yaz”, “evet”, “devam”, “hangi”, “nasıl”, “ürünleri yazar mısın?” gibi basit takip sorularında da geçerlidir.
-
---------------------------------------------
-2) DETAYLI TEKNİK / MÜHENDİSLİK SORULARINDA
---------------------------------------------
-- Eğer kullanıcı şu tarz ifadeler kullanırsa:
-  “detaylı anlat”, 
-  “basınç kaybı hesabı yap”, 
-  “neden düşüyor açıklayarak yaz”, 
-  “boru çapı hesapla”, 
-  “hidrolik hesap”, 
-  “zone planını çıkar”, 
-  “detaylı proje ver”, 
-  “metraj çıkar”, 
-  “tam malzeme listesi”,
-  “teknik olarak açıkla”
-→ Bu durumda 3 cümle kuralı uygulanmaz.
-
-- Bu modda yazım kuralları:
-  • Cevabı 2–5 ARASI KISA PARAGRAFA böl.
-  • Her paragraf 2–3 cümleden oluşsun.
-  • Teknik değerler gerekiyorsa bar, L/dk, debi limitleri, boru sürtünme kayıpları gibi sayıları kullanabilirsin.
-  • Açıklamalar net, adım adım ve kullanıcıyı boğmadan olmalı.
-  • Roman gibi tek blok yazma; her paragraf tek bir fikri anlatsın.
-  • Okunabilirlik her zaman önceliklidir.
-  • Gerekirse küçük madde işaretleri kullanılabilir.
-
---------------------------------------------
-3) FİYAT VE MALZEME LİSTESİ İSTENDİĞİNDE
---------------------------------------------
-- Kullanıcı “ürün listesi”, “tam liste”, “malzeme listesi”, “fiyatlarla yaz” gibi şeyler söylerse:
-  • 3 cümle formatı devre dışı kalır.
-  • Liste şeklinde yazmak serbesttir.
-  • Fiyat istiyorsa fiyat ver (ürün fiyatı sistemde yoksa bunu belirt).
-  • Sprink/rotor adetlerine göre priz kolye + kaplin erkek dirsek kuralını uygula.
-
---------------------------------------------
-4) ÜSLUP
---------------------------------------------
-- Ton: sakin, net, profesyonel ve kolay anlaşılır.
-- Kullanıcı teknik bilmiyormuş gibi yaz ama aptal yerine koyma.
-- Gereksiz edebiyat, süslü anlatım, “roman tarzı” uzun akışlar yasak.
-- Her cevap son derece fonksiyonel ve amaca yönelik olmalı.
-
---------------------------------------------
-5) NE ZAMAN FORMAT DEĞİŞTİRİLMEZ?
---------------------------------------------
-- Kullanıcı net olarak “kısa yaz”, “özet yaz” derse → 3 cümleye dön.
-- Kullanıcı format talep etmiyorsa otomatik analizle uygun moda geç.
-
-
-
-İÇ VERİ SETLERİ (KULLANICIYA GÖSTERME)
-- Arkada PRICE_LIST, READY_SETS, NOZZLE_DATA, DRIP_DATA, PE100_FRICTION, ZONE_LIMITS ve K_FACTORS gibi JSON tabloları kullanıyorsun.
-- Bunlar senin iç veri tabanındır; CEVAPLARINDA BU İSİMLERİ ASLA ANMA.
-- Kullanıcıya bunlardan bahsederken sadece doğal Türkçe kullan:
-  - “nozul verileri” veya “sprinkler debi tablosu”,
-  - “damla sulama verileri” veya “damlama hat debi tablosu”,
-  - “PE100 basınç kaybı tablosu”,
-  - “bağlantı kaybı katsayıları” vb.
-- Asla şu kelimeleri yazma:
-  "NOZZLE_DATA", "DRIP_DATA", "PE100_FRICTION", "K_FACTORS", "PRICE_LIST", "READY_SETS", "ZONE_LIMITS".
-
-BORU ÇAPI / LATERAL KURALI
-- Ana hat (şebekeden veya hidrofordan vana kutusuna kadar) için varsayılan boru çapın: PE100 32 mm.
-- Zone içi LATERAL hatlarda (vana → sprinkler / damla boru) varsayılan boru çapın: PE100 20 mm’dir; BUNU DEĞİŞTİRME.
-- Villa / peyzaj bahçelerinde lateraller için 25 mm veya 32 mm boru ÖNERME; özellikle “lateral” kelimesi geçen hiçbir cümlede 25 mm yazma.
-- Lateral boru söylemen gerekiyorsa sadece şöyle yaz:
-  "PE100 20 mm lateral hat (SKU: KALPE1002016)".
-- 25 mm boru sadece gerekiyorsa çok kısa ana bağlantılarda veya kolektör yanlarında kullanılabilir; bunu da 1 cümleyi geçmeyecek şekilde, teknik detaya boğmadan yaz.
-
-MALZEME LİSTESİ – PRİZ KOLYE ve ERKEK DİRSEK KURALI
-- Ana hat borusu 32 mm veya 40 mm ise ve sistemde sprinkler veya rotor kullanıyorsan:
-  - Toplam sprinkler + rotor adedi kadar uygun çapta priz kolye ver.
-  - Her bir priz kolye için 2 adet 20 mm x 1/2" kaplin dış dişli (erkek) dirsek ver.
-- Bu kuralı formül olarak AKLINDA TUT:
-  - priz kolye adedi = sprinkler adedi + rotor adedi
-  - 20 x 1/2" kaplin dış dişli erkek dirsek adedi = (sprinkler + rotor) x 2
-- Malzeme listesi yazarken bu adetleri NET ve AÇIK şekilde cümleyle belirt:
-  Örnek ifade: "10 adet rotor için 10 adet 32 mm priz kolye ve 20 adet 20 x 1/2\" kaplin dış dişli erkek dirsek gerekir."
-- Varsayılan cevapta SKU vermek zorunda değilsin; kullanıcı özellikle kod istemedikçe sadece ürün tipini yaz.
-
-FİYAT KURALLARI
-- PRICE_LIST ve productContext içindeki fiyatlar senin için referanstır, ama kullanıcıya HER ZAMAN fiyat vermek zorunda değilsin.
-- Kullanıcı özellikle “fiyat”, “kaç TL”, “maliyeti ne”, “bütçe”, “metre fiyatı”, “toplam ne tutar” gibi kelimelerle fiyat/maliyet sormadıkça:
-  - Ürünleri TL cinsinden fiyatla yazma.
-  - İstersen sadece: “İstersen bu ürünlerin yaklaşık fiyatlarını da yazabilirim.” diye teklif et.
-- Kullanıcı açıkça fiyat veya maliyet sorarsa:
-  - productContext’teki fiyatı kullan ve kısa yaz: 
-    "Bu ürünün toptansulama.com’daki güncel fiyatı yaklaşık X TL’dir." 
-  - Birden çok ürün varsa 3–5 satırı geçmeyecek şekilde en önemli ürünleri özetle.
-  - productContext’te fiyat yoksa: 
-    "Bu ürünün fiyatı listemde yok; güncel fiyat için toptansulama.com’dan bakman daha doğru olur." de.
-
-ÜRÜN KODU ve TEKNİK DETAY KURALI
-- Varsayılan cevaplarda ürün KODU / SKU yazma; sadece ürün tipini ve markasını söyle (örneğin “Rain Bird 3504 rotor sprinkler” gibi).
-- Kullanıcı özellikle “ürün kodlarını da yazar mısın”, “SKU lazım”, “stok kodu ver” gibi istemedikçe SKU göstermeyi yasak kabul et.
-- Varsayılan cevaplarda ayrıntılı debi / basınç hesabı (L/dk, bar, ~0,3–0,4 bar vb.) yazma; sadece “basınç açısından uygundur” veya “hidrolik açıdan yeterli olur” gibi kısa ifadeler kullan.
-- Kullanıcı özellikle “hidrolik hesabını da yaz”, “basınç / debi hesabını göster” derse bir SONRAKİ cevabında teknik sayıları kullanarak detay verebilirsin.
-
-SATIN ALMA / SİTE YÖNLENDİRMESİ
-- Uygun yerlerde kısaca:
-  "Bu ürünü toptansulama.com üzerinden temin edebilirsin."
-  diye yönlendirme yap.
-- Kullanıcı “nereden alırım”, “hangi siteden”, “online alabilir miyim”, “link var mı” gibi sorular sorarsa:
-  - Öncelikle toptansulama.com’u öner; başka site ismi vermene gerek yok.
-- Çok uzun tanıtım yapma; yönlendirme 1 cümleyi geçmesin.
-
-UZMANLIK ALANI
-- Peyzaj / villa bahçesi sulama:
-  - Çim alanlar için pop-up sprinkler, rotorlar, rotary nozullar (Rain Bird marka).
-  - Çiçek, çalı, bordür ve sebze alanları için damlama ve mini-sprink sistemleri.
-- Ana borulama ve ekipman:
-  - PE100 borular, vana grupları, kolektör, filtre, vana kutuları, otomasyon (kontrol ünitesi, kablolama).
-- Su kaynakları:
-  - Şebeke suyu, kuyu, depo + hidrofor, terfi sistemleri; Türkiye’de tipik basınç / debi koşulları.
-- Maliyet mantığı:
-  - Ürün birim fiyat listesi varsa ona göre, yoksa sadece “düşük/orta/yüksek maliyet” gibi niteliksel yorum yap.
-
-GENEL ÖZET
-- Kısa yaz, en fazla 4 cümle.
-- Lateral borularda varsayılan PE100 20 mm (KALPE1002016) kullan.
-- Fiyatları sadece kullanıcı sorarsa ver; aksi durumda fiyat yazma, sadece ürün tiplerini ve grupları söyle.
-- Mümkün olduğunda toptansulama.com’a yönlendir.
-- İç veri seti isimlerini asla gösterme; her şeyi son kullanıcı gözüyle, sade Türkçe ve sulama odaklı anlat.
-`;
-
-  // JSON veri context'i (fiyat listesi, hazır setler, teknik tablolar)
-  const dataContext = `
-PRICE_LIST = ${JSON.stringify(PRICE_LIST)};
-READY_SETS = ${JSON.stringify(READY_SETS)};
-NOZZLE_DATA = ${JSON.stringify(NOZZLE_DATA)};
-PE100_FRICTION = ${JSON.stringify(PE100_FRICTION)};
-DRIP_DATA = ${JSON.stringify(DRIP_DATA)};
-ZONE_LIMITS = ${JSON.stringify(ZONE_LIMITS)};
-K_FACTORS = ${JSON.stringify(K_FACTORS)};
-`;
-
-  const messages = [
-    { role: "system", content: systemPrompt },
-    { role: "assistant", content: "(Bu iç veri setidir, kullanıcıya gösterme.) " + dataContext },
-  ];
-
-  if (productContext) {
-    messages.push({
-      role: "assistant",
-      content:
-        "(Bu tablo yalnızca senin dahili referansındır, kullanıcıya ASLA aynen yazma) \n" +
-        "Kullanıcı FİYAT sorarsa bu tabloyu referans alabilirsin. Fiyat sormazsa TL bilgisi verme.\n\n" +
-        productContext,
-    });
-  }
-
-  messages.push(
-    ...history.map((m) => ({ role: m.role, content: m.content })),
-    { role: "user", content: message }
-  );
-
-  // Kullanım hakkını bir artır ve kaydet (SADECE sulama sorularında)
-  currentUser.used += 1;
-  saveUsers(users);
-
-  // Streaming response ayarları
-  res.setHeader("Content-Type", "text/plain; charset=utf-8");
-  res.setHeader("Transfer-Encoding", "chunked");
-  res.setHeader("X-Remaining", String(currentUser.limit - currentUser.used));
-
-  let fullReply = "";
-
-  try {
-    const stream = await client.chat.completions.create({
-      model: "gpt-5.1",
-      messages,
-      stream: true,
-    });
-
-    for await (const part of stream) {
-      const delta = part.choices?.[0]?.delta?.content || "";
-      if (delta) {
-        fullReply += delta;
-        res.write(delta);
-      }
-    }
-
-    res.end();
-  } catch (err) {
-    console.error("OpenAI streaming hata:", err);
-    if (!fullReply) {
-      return res
-        .status(500)
-        .end("Sunucu hatası: Asistan şu anda yanıt veremiyor.");
-    } else {
-      res.write(
-        "\n\n[Uyarı] Cevap tam olarak tamamlanamadı, lütfen tekrar deneyin."
-      );
-      return res.end();
-    }
-  }
-
-  // Streaming bittikten sonra hafıza + proje kaydı
-  try {
-    users = loadUsers();
-    currentUser = users.find((u) => u.email === user.email);
-    if (!currentUser) return;
-
-    if (!Array.isArray(currentUser.memory)) currentUser.memory = [];
-    currentUser.memory.push({ role: "user", content: message });
-    currentUser.memory.push({ role: "assistant", content: fullReply });
-
-    if (currentUser.memory.length > 40) {
-      currentUser.memory = currentUser.memory.slice(-40);
-    }
-
-    if (mode === "design") {
-      if (!Array.isArray(currentUser.projects)) currentUser.projects = [];
-      const now = new Date();
-      const id = String(now.getTime());
-      const title =
-        (designData && designData.title) ||
-        `Özel Tasarım - ${now.toLocaleString("tr-TR")}`;
-
-      currentUser.projects.push({
-        id,
-        title,
-        type: "design",
-        createdAt: now.toISOString(),
-        summary: fullReply.slice(0, 400),
-        content: fullReply,
-        rawDesignData: designData || {},
-      });
-    }
-
-    saveUsers(users);
-  } catch (err) {
-    console.error("Streaming sonrası kullanıcı kaydetme hatası:", err);
-  }
-});
-
-// ------------------------------------------------------
-// Proje endpoint'leri
-// ------------------------------------------------------
-
-// GET /projects?email=...
-app.get("/projects", (req, res) => {
-  const email = req.query.email;
-  if (!email) {
-    return res.status(400).json({ error: "email parametresi zorunlu." });
-  }
-
-  const users = loadUsers();
-  const user  = users.find((u) => u.email === email);
-  if (!user) {
-    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
-  }
-
-  const projects = Array.isArray(user.projects) ? user.projects : [];
-
-  const list = projects.map((p) => ({
-    id: p.id,
-    title: p.title,
-    type: p.type,
-    createdAt: p.createdAt,
-    summary: p.summary || "",
-  }));
-
-  return res.json({ projects: list });
-});
-
-// GET /projects/:id?email=...
-app.get("/projects/:id", (req, res) => {
-  const email = req.query.email;
-  const id    = req.params.id;
-
-  if (!email || !id) {
-    return res
-      .status(400)
-      .json({ error: "email parametresi ve id zorunludur." });
-  }
-
-  const users = loadUsers();
-  const user  = users.find((u) => u.email === email);
-  if (!user) {
-    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
-  }
-
-  const projects = Array.isArray(user.projects) ? user.projects : [];
-  const project  = projects.find((p) => p.id === id);
-
-  if (!project) {
-    return res.status(404).json({ error: "Proje bulunamadı." });
-  }
-
-  return res.json({ project });
-});
-
-// ------------------------------------------------------
-// PDF export
-// ------------------------------------------------------
-
-// POST /export-pdf { email, title, content }
-app.post("/export-pdf", (req, res) => {
-  const { email, title, content } = req.body || {};
-
-  if (!email || !title || !content) {
-    return res
-      .status(400)
-      .json({ error: "email, title ve content zorunlu." });
-  }
-
-  const users = loadUsers();
-  const user  = users.find((u) => u.email === email);
-  if (!user) {
-    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
-  }
-
-  const safeTitle =
-    title.replace(/[^\wığüşöçİĞÜŞÖÇ\- ]+/g, "_").slice(0, 80) || "proje";
-  const fileName = `${safeTitle}.pdf`;
-
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader(
-    "Content-Disposition",
-    `attachment; filename="${fileName}"`
-  );
-
-  const doc = new PDFDocument({
-    size: "A4",
-    margin: 40,
-  });
-
-  doc.pipe(res);
-
-  doc.fontSize(18).text(title, { align: "center" });
-  doc.moveDown();
-
-  const paragraphs = String(content).split(/\n{2,}/);
-  doc.fontSize(11);
-
-  paragraphs.forEach((p) => {
-    doc.text(p.trim());
-    doc.moveDown(0.7);
-  });
-
-  doc.end();
-});
-
-
+// Kullanıcı dosyasını oku (admin için)
 function loadUsersFile() {
   try {
     return JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
@@ -876,29 +834,30 @@ function loadUsersFile() {
   }
 }
 
+// Kullanıcı dosyasını kaydet (admin için)
 function saveUsersFile(users) {
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
 }
 
-// Admin doğrulama middleware
+// Admin doğrulama middleware (yeniden)
 function checkAdmin(req, res, next) {
   const key = req.headers["x-admin-key"];
   if (!key || key !== ADMIN_KEY) {
-    return res.status(401).json({ error: "Yetkisiz" });
+    return res.status(403).json({ error: "Geçersiz admin anahtarı." });
   }
   next();
 }
 
-// 1) Kullanıcı listesini getir
+// 1) Tüm kullanıcıları listele (özet)
 app.get("/admin/users", checkAdmin, (req, res) => {
   const all = loadUsersFile();
 
-  const mapped = all.map(u => ({
+  const mapped = all.map((u) => ({
     email: u.email,
     used: u.used || 0,
     limit: u.limit || 20,
     remaining: (u.limit || 20) - (u.used || 0),
-    memoryCount: (u.memory || []).length
+    memoryCount: (u.memory || []).length,
   }));
 
   res.json({ users: mapped });
@@ -910,8 +869,9 @@ app.post("/admin/update-user", checkAdmin, (req, res) => {
   if (!email) return res.status(400).json({ error: "E-posta eksik." });
 
   const all = loadUsersFile();
-  const idx = all.findIndex(u => u.email === email);
-  if (idx === -1) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+  const idx = all.findIndex((u) => u.email === email);
+  if (idx === -1)
+    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
 
   if (typeof limit === "number") {
     all[idx].limit = limit;
@@ -927,17 +887,39 @@ app.post("/admin/update-user", checkAdmin, (req, res) => {
 
   const updated = all[idx];
   res.json({
-    success: true,
+    ok: true,
     user: {
       email: updated.email,
       used: updated.used || 0,
       limit: updated.limit || 20,
       remaining: (updated.limit || 20) - (updated.used || 0),
-      memoryCount: (updated.memory || []).length
-    }
+      memoryCount: (updated.memory || []).length,
+    },
   });
 });
 
+// 3) Kullanıcı sohbet geçmişi getir
+app.get("/admin/user-history", checkAdmin, (req, res) => {
+  const email = req.query.email;
+  if (!email) {
+    return res.status(400).json({ error: "E-posta eksik." });
+  }
+
+  const all = loadUsersFile();
+  const user = all.find((u) => u.email === email);
+
+  if (!user) {
+    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+  }
+
+  const history = Array.isArray(user.memory) ? user.memory : [];
+
+  return res.json({
+    success: true,
+    email: user.email,
+    history,
+  });
+});
 
 // ------------------------------------------------------
 // POST /api/sulama – JSON cevap (chat + proje paneli için)
@@ -950,203 +932,114 @@ app.post("/api/sulama", async (req, res) => {
     return res.status(400).json({ error: "message zorunlu." });
   }
 
-  // 1) Kullanıcı doğrulama (guest fallback)
+  // Kullanıcı kontrolü
   if (!user || !user.email) {
-    user = { email: "guest@sulamaasistani.local" };
+    return res
+      .status(400)
+      .json({ error: "Kullanıcı bilgisi (email) zorunludur." });
   }
 
-  // 2) Kullanıcıyı çek / yoksa oluştur
   let users = loadUsers();
   let currentUser = users.find((u) => u.email === user.email);
-
   if (!currentUser) {
     currentUser = {
       email: user.email,
-      password: "",
-      limit: 9999,
       used: 0,
+      limit: 20,
       memory: [],
       projects: [],
-      createdAt: new Date().toISOString(),
     };
     users.push(currentUser);
-    saveUsers(users);
   }
 
-  const history = Array.isArray(currentUser.memory)
-    ? currentUser.memory.slice(-20)
-    : [];
-
-  // 3) Sınıflandırma
-  const category = await classifyIrrigation(message);
-
-  let irrigationContextText = "";
-  const hasHistory = Array.isArray(history) && history.length > 0;
-
-  if (hasHistory) {
-    irrigationContextText = history
-      .filter((m) => m.role === "user")
-      .map((m) => (m.content || "").toLowerCase())
-      .join(" ");
+  // Limit kontrolü
+  if (isUserLimitExceeded(currentUser)) {
+    return res.status(403).json({
+      error:
+        "Soru limitiniz dolmuştur. Lütfen admin ile iletişime geçin veya limitinizi yükseltin.",
+      code: "LIMIT_EXCEEDED",
+    });
   }
 
-  const hasIrrigationInHistory =
-    irrigationContextText.includes("bahçe") ||
-    irrigationContextText.includes("bahce") ||
-    irrigationContextText.includes("sulama") ||
-    irrigationContextText.includes("sprink") ||
-    irrigationContextText.includes("sprinkler") ||
-    irrigationContextText.includes("damla") ||
-    irrigationContextText.includes("damlama") ||
-    irrigationContextText.includes("vana") ||
-    irrigationContextText.includes("m²") ||
-    irrigationContextText.includes("m2");
-
-  const msg = (message || "").toLowerCase();
-
-  const isNumericFollowup =
-    typeof msg === "string" &&
-    msg.length <= 30 &&
-    /\d/.test(msg) &&
-    hasHistory;
-
-  const continuationKeywords = [
-    "detay",
-    "detaylı",
-    "devam",
-    "anlat",
-    "hangi",
-    "nasıl",
-    "neresi",
-    "nereden",
-    "hangisi",
-    "tamam",
-    "yaz",
-    "evet",
-    "ürün",
-    "urun",
-    "liste",
-    "listesini",
-    "ürün listesi",
-    "urun listesi",
-    "ürün listesini",
-    "urun listesini",
-    "fiyat",
-    "fiyatı",
-    "fiyatı nedir",
-    "fiyatları",
-    "fiyatlarını",
-    "fiyat bilgisi",
-    "fiyatlarıyla",
-    "fiyatlariyla",
-    "verir misin",
-    "yazar mısın",
-    "yazarmısın",
-    "çıkarır mısın",
-    "cikarir misin",
-  ];
-
-  const isContinuationFollowup =
-    typeof msg === "string" &&
-    msg.length <= 160 &&
-    continuationKeywords.some((kw) => msg.includes(kw)) &&
-    hasHistory;
-
+  const category = classifyIrrigationCategory(message);
   let effectiveCategory = category;
 
-  if (
-    category === "NON_IRRIGATION" &&
-    hasIrrigationInHistory &&
-    (isNumericFollowup || isContinuationFollowup)
-  ) {
+  // Sulama ile çok alakalı kelimeler varsa, NON_IRRIGATION bile dese IRRIGATION kabul et
+  const strongIrrigationHints = ["sprink", "sulama", "damla", "PE100", "vana"];
+  const hasStrongHint = strongIrrigationHints.some((k) =>
+    message.toLowerCase().includes(k.toLowerCase())
+  );
+  if (category !== "IRRIGATION" && hasStrongHint) {
     effectiveCategory = "IRRIGATION";
   }
 
+  // Eğer hala NON_IRRIGATION ise, kibarca reddet
   if (effectiveCategory === "NON_IRRIGATION") {
-    const reply =
-      "Bu soru sulama kapsamım dışında. Ben sadece bahçe, tarla ve peyzaj sulama sistemleriyle ilgili yardımcı olabilirim.";
-    return res.json({ reply });
+    return res.json({
+      reply:
+        "Ben sulama sistemleri konusunda uzmanlaşmış bir asistanım. Bu soru sulama ile ilgili olmadığı için yardımcı olamıyorum. Bahçe sulama, damla sulama, yağmurlama, ürün seçimi gibi konularda soru sorabilirsin.",
+      meta: {
+        category,
+        effectiveCategory,
+      },
+    });
   }
 
-  // 4) Ürün eşleme
-  const relatedProducts = findRelatedProducts(message, 8);
+  // Kullanıcının hafızasından son 20 mesajı al
+  const history = Array.isArray(currentUser.memory)
+    ? currentUser.memory.slice(-20)
+    : [];
+  const hasHistory = Array.isArray(history) && history.length > 0;
 
+  // Ürün eşleme
+  const relatedProducts = findRelatedProducts(message, 8);
   let productContext = "";
   if (relatedProducts.length > 0) {
     productContext =
       "İLGİLİ ÜRÜNLER VE FİYATLAR (CSV'den):\n" +
       relatedProducts
         .map((p) => {
-          const temizFiyat = getProductPriceText(p).trim();
-          let fiyatMetni;
-
-          if (
-            !temizFiyat ||
-            temizFiyat === "0" ||
-            temizFiyat === "0,00" ||
-            temizFiyat === "0.00"
-          ) {
-            fiyatMetni =
-              "FİYAT BİLGİSİ CSV'DE YOK (bu ürün için fiyat UYDURMA, müşteriye fiyat veremediğini söyle)";
-          } else {
-            fiyatMetni = `${temizFiyat} TL (CSV)`;
-          }
-
-          return `- SKU: ${p["SKU"]} | Ürün: ${p["Ürün Adı"]} | Fiyat: ${fiyatMetni}`;
+          const fiyatMetni = getProductPriceText(p).trim();
+          const fiyat =
+            !fiyatMetni || fiyatMetni === "0"
+              ? "Bu ürün için CSV'de fiyat bilgisi yok."
+              : `${fiyatMetni} TL (KDV dahil varsayılabilir)`;
+          return `- SKU: ${p["SKU"] || ""} | Ürün: ${
+            p["Ürün Adı"] || p["Ad"] || ""
+          } | Fiyat: ${fiyat}`;
         })
         .join("\n");
   }
 
-  // 5) Sistem prompt'u (aynı ama proje bilgisiyle güçlendirilmiş)
-  let systemPrompt2 = `
-Sen “Sulama Asistanı” adında, Türkiye şartlarına göre çalışan profesyonel bir sulama danışmanısın.
-Villa / peyzaj bahçeleri için sprinkler ve damla sulama projelendirme, ürün seçimi, maliyet mantığı ve hazır set önerileri konusunda uzmansın.
-
-AŞAĞIDAKİ PROJE ÖN BİLGİLERİNİ MUTLAKA DİKKATE AL:
-${project ? JSON.stringify(project, null, 2) : "(Proje bilgisi kısıtlı veya yok)"}
-
-Diğer tüm kurallar, üslup ve davranış biçimi /chat endpoint’inde tarif edilenle aynıdır:
-- Kısa sorularda en fazla 3 cümle.
-- Detaylı teknik istenirse 2–5 kısa paragraf.
-- Lateral hatlarda PE100 20 mm kullan, 25 mm lateral önermemek vb.
-`;
-
-  if (mode === "design") {
-    systemPrompt2 += `
-KULLANICI ÖZEL TASARIM MODUNU AÇTI.
-Cevabını şu başlıklarla ver:
-
-1) Proje özeti
-2) Zone planı (alan, debi, tip)
-3) Malzeme listesi (adet + açıklama + yaklaşık fiyat aralığı, TL)
-4) Toplam maliyet aralığı (minimum - maksimum, TL)
-5) Montaj notları (pratik öneriler)
-
-Türkiye koşullarına göre dengeli ve gerçekçi öneri yap.
-`;
-    message =
-      `ÖZEL TASARIM TALEBİ:\n` +
-      JSON.stringify(designData || {}, null, 2) +
-      `\n\nLütfen yukarıdaki kurallara göre detaylı cevapla.`;
+  let irrigationContextText = "";
+  if (hasHistory) {
+    irrigationContextText =
+      "KULLANICININ ÖNCEKİ SULAMA SOHBETLERİNDEN ÖZET KONTEXT:\n\n" +
+      history
+        .map(
+          (m) =>
+            `${m.role === "user" ? "KULLANICI" : "ASİSTAN"}: ${m.content}`
+        )
+        .join("\n") +
+      "\n\n---\n\n";
   }
 
-  const dataContext2 = `
-PRICE_LIST = ${JSON.stringify(PRICE_LIST)};
-READY_SETS = ${JSON.stringify(READY_SETS)};
-NOZZLE_DATA = ${JSON.stringify(NOZZLE_DATA)};
-PE100_FRICTION = ${JSON.stringify(PE100_FRICTION)};
-DRIP_DATA = ${JSON.stringify(DRIP_DATA)};
-ZONE_LIMITS = ${JSON.stringify(ZONE_LIMITS)};
-K_FACTORS = ${JSON.stringify(K_FACTORS)};
-`;
+  const systemPrompt = buildSystemPrompt();
 
   const messages = [
-    { role: "system", content: systemPrompt2 },
-    {
+  { role: "system", content: STEP_CONTROLLER },
+  { role: "system", content: systemPrompt }
+];
+
+
+  if (irrigationContextText) {
+    messages.push({
       role: "assistant",
-      content: "(Bu iç veri setidir, kullanıcıya gösterme.) " + dataContext2,
-    },
-  ];
+      content:
+        "(Bu içerik önceki konuşmalara dair özet bilgidir, kullanıcıya aynen gösterme.)\n\n" +
+        irrigationContextText,
+    });
+  }
 
   if (productContext) {
     messages.push({
@@ -1158,10 +1051,7 @@ K_FACTORS = ${JSON.stringify(K_FACTORS)};
     });
   }
 
-  messages.push(
-    ...history.map((m) => ({ role: m.role, content: m.content })),
-    { role: "user", content: message }
-  );
+  messages.push({ role: "user", content: message });
 
   // Kullanım arttır
   currentUser.used += 1;
@@ -1169,159 +1059,53 @@ K_FACTORS = ${JSON.stringify(K_FACTORS)};
 
   try {
     const completion = await client.chat.completions.create({
-      model: "gpt-5.1",
+      model: "gpt-4.1",
       messages,
+        max_tokens: 200,
+        temperature: 0.4,
     });
 
     const reply =
       completion.choices?.[0]?.message?.content ||
-      "Asistan şu anda yanıt üretemedi.";
+      "Şu anda yanıt üretemiyorum, lütfen tekrar deneyin.";
 
-    // Hafızaya yaz
-    try {
-      users = loadUsers();
-      currentUser = users.find((u) => u.email === user.email);
-      if (currentUser) {
-        if (!Array.isArray(currentUser.memory)) currentUser.memory = [];
-        currentUser.memory.push({ role: "user", content: message });
-        currentUser.memory.push({ role: "assistant", content: reply });
+    // Hafızayı güncelle
+    users = loadUsers();
+    currentUser = users.find((u) => u.email === user.email);
+    if (!currentUser) return res.json({ reply });
 
-        if (currentUser.memory.length > 40) {
-          currentUser.memory = currentUser.memory.slice(-40);
-        }
+    if (!Array.isArray(currentUser.memory)) currentUser.memory = [];
+    currentUser.memory.push({ role: "user", content: message });
+    currentUser.memory.push({ role: "assistant", content: reply });
 
-        if (mode === "design") {
-          if (!Array.isArray(currentUser.projects)) currentUser.projects = [];
-          const now = new Date();
-          const id = String(now.getTime());
-          const title =
-            (designData && designData.title) ||
-            `Özel Tasarım - ${now.toLocaleString("tr-TR")}`;
-
-          currentUser.projects.push({
-            id,
-            title,
-            type: "design",
-            createdAt: now.toISOString(),
-            summary: reply.slice(0, 400),
-            content: reply,
-            rawDesignData: designData || {},
-          });
-        }
-
-        saveUsers(users);
-      }
-    } catch (err) {
-      console.error("JSON endpoint sonrası hafıza kaydetme hatası:", err);
+    if (currentUser.memory.length > 40) {
+      currentUser.memory = currentUser.memory.slice(-40);
     }
 
-    // Şimdilik sadece reply dönüyoruz; ileride projectUpdate ekleriz
-    return res.json({
+    saveUsers(users);
+
+    res.json({
       reply,
-      projectUpdate: null,
+      meta: {
+        category,
+        effectiveCategory,
+        used: currentUser.used || 0,
+        limit: currentUser.limit || 20,
+        remaining: (currentUser.limit || 20) - (currentUser.used || 0),
+        productCount: relatedProducts.length,
+      },
     });
   } catch (err) {
-    console.error("/api/sulama OpenAI hata:", err);
-    return res
-      .status(500)
-      .json({ error: "Sunucu hatası: Asistan şu anda yanıt veremiyor." });
+    console.error("OpenAI hata:", err);
+    res.status(500).json({
+      error: "OpenAI isteğinde hata oluştu.",
+    });
   }
 });
-
-// -------------------------------------------
-// ADMIN API BLOĞU
-// -------------------------------------------
-
-
-// Kullanıcı dosyasını oku
-function loadUsersFile() {
-  try {
-    return JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
-  } catch (e) {
-    return [];
-  }
-}
-
-// Kullanıcı dosyasını kaydet
-function saveUsersFile(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
-}
-
-// Admin doğrulama middleware
-function checkAdmin(req, res, next) {
-  const key = req.headers["x-admin-key"];
-  if (!key || key !== ADMIN_KEY) {
-    return res.status(401).json({ error: "Yetkisiz" });
-  }
-  next();
-}
-
-// Tüm kullanıcıları getir
-app.get("/admin/users", checkAdmin, (req, res) => {
-  const all = loadUsersFile();
-
-  const mapped = all.map(u => ({
-    email: u.email,
-    used: u.used || 0,
-    limit: u.limit || 20,
-    remaining: (u.limit || 20) - (u.used || 0),
-    memoryCount: (u.memory || []).length
-  }));
-
-  res.json({ users: mapped });
-});
-
-// Kullanıcı limiti / kullanım / hafıza güncelle
-app.post("/admin/update-user", checkAdmin, (req, res) => {
-  const { email, limit, resetUsed, resetMemory } = req.body;
-
-  if (!email) {
-    return res.status(400).json({ error: "E-posta eksik." });
-  }
-
-  const all = loadUsersFile();
-  const idx = all.findIndex(u => u.email === email);
-
-  if (idx === -1) {
-    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
-  }
-
-  // Limit güncelle
-  if (typeof limit === "number") {
-    all[idx].limit = limit;
-  }
-
-  // Kullanımı sıfırla
-  if (resetUsed) {
-    all[idx].used = 0;
-  }
-
-  // Hafızayı sıfırla
-  if (resetMemory) {
-    all[idx].memory = [];
-  }
-
-  saveUsersFile(all);
-
-  const updated = all[idx];
-
-  res.json({
-    success: true,
-    user: {
-      email: updated.email,
-      used: updated.used || 0,
-      limit: updated.limit || 20,
-      remaining: (updated.limit || 20) - (updated.used || 0),
-      memoryCount: (updated.memory || []).length
-    }
-  });
-});
-
 
 // ------------------------------------------------------
 // Sunucu başlat
 // ------------------------------------------------------
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Sulama Asistanı server ${PORT} portunda çalışıyor.`);
