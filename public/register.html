@@ -14,84 +14,84 @@
       --text-soft: #9ca3af;
       --text-softer: #6b7280;
       --border-subtle: #1f2937;
+      --input-bg: #020617;
+      --input-border: #1f2937;
+      --danger: #f97373;
+      --shadow-soft: 0 22px 45px rgba(15, 23, 42, 0.8);
+      --radius-xl: 22px;
     }
 
     * {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
     }
 
     body {
+      margin: 0;
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
         "Segoe UI", sans-serif;
-      background: radial-gradient(circle at 0% 0%, #052e16, #020617 40%, #000),
-        radial-gradient(circle at 100% 100%, #0f172a, #020617 50%, #000);
+      background: radial-gradient(circle at top, #0f172a 0, #020617 55%, #000 100%);
       color: var(--text);
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .shell {
-      width: 100%;
-      max-width: 440px;
-    }
-
-    .logo-row {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
       justify-content: center;
+      padding: 32px 16px;
     }
 
-    .logo-dot {
-      width: 22px;
-      height: 22px;
+    .page {
+      width: 100%;
+      max-width: 960px;
+    }
+
+    .branding {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .logo-circle {
+      width: 32px;
+      height: 32px;
       border-radius: 999px;
-      background: radial-gradient(circle at 30% 20%, #bbf7d0, #22c55e);
-      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.7),
-        0 8px 18px rgba(22, 163, 74, 0.8);
+      background: radial-gradient(circle at 30% 30%, #bbf7d0, #22c55e 40%, #065f46 100%);
+      box-shadow: 0 0 24px rgba(34, 197, 94, 0.65);
       position: relative;
       overflow: hidden;
     }
 
-    .logo-dot::after {
+    .logo-circle::after {
       content: "";
       position: absolute;
-      inset: 35%;
-      border-radius: inherit;
-      border: 1px solid rgba(22, 163, 74, 0.5);
+      inset: 7px;
+      border-radius: 999px;
+      border: 2px solid rgba(15, 23, 42, 0.7);
+      box-shadow: inset 0 0 12px rgba(15, 23, 42, 0.6);
     }
 
-    .logo-text-main {
-      font-size: 22px;
-      font-weight: 650;
+    .branding-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .branding-title {
+      font-size: 24px;
+      font-weight: 700;
       letter-spacing: 0.03em;
     }
 
-    .logo-text-sub {
-      font-size: 11px;
+    .branding-subtitle {
+      font-size: 12px;
       color: var(--text-soft);
-      text-align: center;
     }
 
     .card {
-      background: radial-gradient(
-            circle at 100% 0,
-            rgba(34, 197, 94, 0.18),
-            transparent 55%
-          )
-          padding-box,
-        linear-gradient(135deg, #020617, #020617) border-box;
-      border-radius: 22px;
-      border: 1px solid rgba(31, 41, 55, 0.95);
-      padding: 22px 20px 18px;
-      box-shadow: 0 22px 55px rgba(15, 23, 42, 0.9);
+      background: radial-gradient(circle at top left, #020617, #020617 40%, #020617 100%);
+      border-radius: 28px;
+      padding: 28px 26px 26px;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(148, 163, 184, 0.15);
       position: relative;
       overflow: hidden;
     }
@@ -99,65 +99,32 @@
     .card::before {
       content: "";
       position: absolute;
-      inset: -1px;
-      background: radial-gradient(
-        circle at 0 0,
-        rgba(34, 197, 94, 0.18),
-        transparent 60%
-      );
-      opacity: 0.7;
+      top: -120px;
+      right: -140px;
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, rgba(34, 197, 94, 0.16), transparent 60%);
+      opacity: 0.9;
       pointer-events: none;
     }
 
     .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
       position: relative;
       z-index: 1;
-      margin-bottom: 14px;
     }
 
-    .card-title-row {
+    .card-title-group {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
+      flex-direction: column;
+      gap: 4px;
     }
 
     .card-title {
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    .beta-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 10px;
-      padding: 3px 9px 3px 4px;
-      border-radius: 999px;
-      background: rgba(15, 23, 42, 0.95);
-      border: 1px solid rgba(34, 197, 94, 0.5);
-    }
-
-    .beta-pill-dot {
-      width: 16px;
-      height: 16px;
-      border-radius: 999px;
-      background: radial-gradient(circle at 30% 20%, #bbf7d0, #22c55e);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      font-weight: 800;
-      color: #052e16;
-      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.7),
-        0 5px 12px rgba(22, 163, 74, 0.8);
-    }
-
-    .beta-pill-text {
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--accent-strong);
+      font-size: 22px;
       font-weight: 600;
     }
 
@@ -173,126 +140,197 @@
 
     .section-label {
       margin-top: 10px;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       font-size: 11px;
-      color: var(--text-soft);
       text-transform: uppercase;
       letter-spacing: 0.08em;
-    }
-
-    .btn-google {
-      width: 100%;
-      border-radius: 999px;
-      padding: 8px 12px;
-      border: 1px solid rgba(31, 41, 55, 0.95);
-      background: rgba(15, 23, 42, 0.98);
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      cursor: pointer;
-      transition: all 0.15s ease-out;
-    }
-
-    .btn-google img {
-      width: 16px;
-      height: 16px;
-    }
-
-    .btn-google:hover {
-      border-color: rgba(34, 197, 94, 0.6);
-      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.5),
-        0 10px 24px rgba(22, 163, 74, 0.35);
-      transform: translateY(-1px);
-    }
-
-    .divider {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: 10px 0;
-      font-size: 11px;
       color: var(--text-softer);
+      font-weight: 500;
     }
 
-    .divider span.line {
-      flex: 1;
-      height: 1px;
-      background: rgba(31, 41, 55, 0.9);
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
+    .badge-beta {
+      display: inline-flex;
+      align-items: center;
       gap: 6px;
-      margin-bottom: 10px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      background: linear-gradient(
+        135deg,
+        rgba(22, 163, 74, 0.2),
+        rgba(15, 23, 42, 0.9)
+      );
+      font-size: 11px;
+      color: var(--accent-strong);
+      font-weight: 500;
+    }
+
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: radial-gradient(circle at center, #bbf7d0, #22c55e);
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.6);
+    }
+
+    form {
       position: relative;
       z-index: 1;
     }
 
-    label {
-      font-size: 12px;
+    .block-google {
+      margin-top: 6px;
+      margin-bottom: 16px;
+    }
+
+    .btn-google {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: radial-gradient(
+        circle at top left,
+        rgba(15, 23, 42, 0.7),
+        rgba(15, 23, 42, 1)
+      );
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.18s ease-out;
+    }
+
+    .btn-google:hover {
+      border-color: rgba(148, 163, 184, 0.55);
+      background: radial-gradient(
+        circle at top left,
+        rgba(15, 23, 42, 0.9),
+        rgba(15, 23, 42, 1)
+      );
+      transform: translateY(-1px);
+      box-shadow: 0 16px 30px rgba(15, 23, 42, 0.75);
+    }
+
+    .btn-google-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      background: conic-gradient(
+        from 180deg at 50% 50%,
+        #fbbc05 0deg,
+        #ea4335 90deg,
+        #34a853 180deg,
+        #4285f4 270deg,
+        #fbbc05 360deg
+      );
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-google-icon::before {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      background: #020617;
+      border-radius: 3px;
+    }
+
+    .btn-google-icon::after {
+      content: "";
+      position: absolute;
+      inset: 5px;
+      border-radius: 2px;
+      border: 2px solid #e5e7eb;
+      box-sizing: border-box;
+    }
+
+    .or-separator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0 18px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-softer);
+      font-weight: 500;
+    }
+
+    .or-separator-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(
+        to right,
+        transparent,
+        rgba(148, 163, 184, 0.35),
+        transparent
+      );
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 6px;
       color: var(--text-soft);
     }
 
-    input[type="text"],
-    input[type="email"],
-    input[type="password"] {
+    .form-group input {
       width: 100%;
-      padding: 9px 11px;
-      border-radius: 11px;
-      border: 1px solid rgba(31, 41, 55, 0.95);
-      background: rgba(15, 23, 42, 0.98);
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--input-border);
+      background: radial-gradient(circle at top, #020617, #020617 60%, #020617);
       color: var(--text);
-      font-size: 13px;
+      font-size: 14px;
       outline: none;
-      transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out;
+      transition: all 0.15s ease-out;
     }
 
-    input::placeholder {
+    .form-group input::placeholder {
       color: var(--text-softer);
     }
 
-    input:focus {
+    .form-group input:focus {
       border-color: rgba(34, 197, 94, 0.8);
-      box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.5);
+      box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.6), 0 16px 30px rgba(15, 23, 42, 0.9);
     }
 
     .btn-primary {
       width: 100%;
+      margin-top: 8px;
+      padding: 12px 16px;
       border-radius: 999px;
-      padding: 9px 12px;
+      background: radial-gradient(circle at top left, #22c55e, #16a34a);
       border: none;
-      cursor: pointer;
-      font-size: 13px;
+      color: #022c22;
       font-weight: 600;
-      background: linear-gradient(135deg, #22c55e, #16a34a, #22c55e);
-      color: #052e16;
-      box-shadow: 0 12px 26px rgba(22, 163, 74, 0.65);
-      transition: all 0.15s ease-out;
-      margin-top: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 18px 40px rgba(34, 197, 94, 0.55);
+      transition: all 0.16s ease-out;
     }
 
     .btn-primary:hover {
       transform: translateY(-1px);
-      box-shadow: 0 16px 32px rgba(22, 163, 74, 0.75);
-    }
-
-    .btn-primary:active {
-      transform: translateY(0);
-      box-shadow: 0 8px 18px rgba(22, 163, 74, 0.6);
+      box-shadow: 0 22px 50px rgba(34, 197, 94, 0.75);
+      background: radial-gradient(circle at top left, #4ade80, #22c55e);
     }
 
     .helper-row {
+      margin-top: 10px;
+      font-size: 13px;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 11px;
-      color: var(--text-soft);
-      margin-top: 6px;
+      justify-content: flex-end;
+      gap: 8px;
+      color: var(--text-softer);
     }
 
     .helper-row a {
@@ -306,13 +344,14 @@
     }
 
     .status {
-      margin-top: 8px;
-      font-size: 11px;
-      min-height: 14px;
+      margin-top: 10px;
+      font-size: 13px;
+      min-height: 18px;
+      color: var(--text-softer);
     }
 
     .status.error {
-      color: #f97373;
+      color: var(--danger);
     }
 
     .status.ok {
@@ -320,53 +359,72 @@
     }
 
     .disclaimer {
-      margin-top: 10px;
-      font-size: 10px;
+      margin-top: 18px;
+      font-size: 11px;
       color: var(--text-softer);
-      position: relative;
-      z-index: 1;
+      line-height: 1.45;
     }
 
     .disclaimer strong {
       color: var(--accent-strong);
     }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 20px 12px;
+      }
+
+      .card {
+        padding: 22px 16px 20px;
+        border-radius: 22px;
+      }
+
+      .branding-title {
+        font-size: 20px;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="shell">
-    <div class="logo-row">
-      <div class="logo-dot"></div>
-      <div>
-        <div class="logo-text-main">Sulama Asistanı</div>
-        <div class="logo-text-sub">Villa ve peyzaj bahçeleri için akıllı sulama hesabı</div>
+  <div class="page">
+    <header class="branding">
+      <div class="logo-circle"></div>
+      <div class="branding-text">
+        <div class="branding-title">Sulama Asistanı</div>
+        <div class="branding-subtitle">
+          Villa ve peyzaj bahçeleri için akıllı sulama hesabı
+        </div>
       </div>
-    </div>
+    </header>
 
-    <div class="card">
+    <main class="card">
       <div class="card-header">
-        <div class="card-title-row">
+        <div class="card-title-group">
           <div class="card-title">Yeni bir hesap oluşturun</div>
-          <div class="beta-pill">
-            <div class="beta-pill-dot">β</div>
-            <div class="beta-pill-text">BETA</div>
+          <div class="card-subtitle">
+            Kayıt olurken girdiğiniz e-posta, <strong>soru limitiniz</strong> ve projeleriniz
+            için kimlik olarak kullanılacaktır.
           </div>
         </div>
-        <div class="card-subtitle">
-          Kayıt olurken girdiğiniz e-posta, <strong>soru limitiniz</strong> ve projeleriniz için kimlik
-          olarak kullanılacaktır.
+
+        <div class="badge-beta">
+          <span class="badge-dot"></span>
+          <span>BETA</span>
         </div>
       </div>
 
       <div class="section-label">Tek tıkla kayıt</div>
-      <button type="button" class="btn-google" id="googleBtn">
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
-        <span>Google ile kayıt ol</span>
-      </button>
+      <div class="block-google">
+        <button type="button" id="googleBtn" class="btn-google">
+          <span class="btn-google-icon"></span>
+          <span>Google ile kayıt ol</span>
+        </button>
+      </div>
 
-      <div class="divider">
-        <span class="line"></span>
+      <div class="or-separator">
+        <div class="or-separator-line"></div>
         <span>veya e-posta ile</span>
-        <span class="line"></span>
+        <div class="or-separator-line"></div>
       </div>
 
       <form id="registerForm" autocomplete="on">
@@ -389,6 +447,16 @@
           />
         </div>
 
+        <div class="form-group">
+          <label for="passwordInput">Şifre</label>
+          <input
+            id="passwordInput"
+            type="password"
+            required
+            placeholder="Şifreniz"
+          />
+        </div>
+
         <button type="submit" class="btn-primary">Kayıt ol ve devam et</button>
 
         <div class="helper-row">
@@ -403,13 +471,14 @@
           hata yapabilir; ticari tekliflerde mutlaka profesyonel kontrol yapın.
         </div>
       </form>
-    </div>
+    </main>
   </div>
 
   <script>
     var registerForm = document.getElementById("registerForm");
     var nameInput = document.getElementById("nameInput");
     var emailInput = document.getElementById("emailInput");
+    var passwordInput = document.getElementById("passwordInput");
     var statusEl = document.getElementById("status");
     var googleBtn = document.getElementById("googleBtn");
 
@@ -427,19 +496,33 @@
 
       var email = (emailInput.value || "").trim();
       var name = (nameInput.value || "").trim();
+      var password = (passwordInput.value || "").trim();
 
       if (!email || email.indexOf("@") === -1) {
         setStatus("Geçerli bir e-posta adresi girin.", "error");
         return;
       }
 
+      if (!password) {
+        setStatus("Şifre zorunludur.", "error");
+        return;
+      }
+
+      if (password.length < 6) {
+        setStatus("Şifreniz en az 6 karakter olmalı.", "error");
+        return;
+      }
+
       setStatus("Kayıt işlemi yapılıyor...", "ok");
 
-      // Eğer backend'de /api/register yoksa, /api/login ile aynı mantığı kullanabilirsin.
       fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email, name: name })
+        body: JSON.stringify({
+          email: email,
+          name: name,
+          password: password
+        })
       })
         .then(function (res) { return res.json(); })
         .then(function (data) {
@@ -448,8 +531,6 @@
             return;
           }
 
-          // Kullanıcıyı localStorage'a yaz
-          localStorage.setItem("user", JSON.stringify({ email: data.email }));
           setStatus("Kayıt tamamlandı, yönlendiriliyorsunuz...", "ok");
 
           setTimeout(function () {

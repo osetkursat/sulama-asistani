@@ -39,6 +39,7 @@ passport.deserializeUser((email, done) => {
   done(null, u || null);
 });
 
+
 // ------------------------------------------------------
 // Body parser + statik dosyalar
 // ------------------------------------------------------
@@ -71,9 +72,11 @@ const PRICE_LIST_FILE = path.join(__dirname, "price_list.json");
 // Yanıt adımlama (step controller)
 // ------------------------------------------------------
 const STEP_CONTROLLER = {
-  maxTokens: 450,
+  // Model gerektiğinde uzun cümle kurabilsin diye tavan yüksek kalsın,
+  // asıl kısaltmayı prompt ile yapıyoruz.
+  maxTokens: 900,
   chunkSize: 120,
-  pauseMs: 0
+  pauseMs: 0,
 };
 
 // ------------------------------------------------------
@@ -116,33 +119,50 @@ function loadPriceList() {
     PRICE_LIST = JSON.parse(raw || "[]");
     console.log(`PRICE_LIST yüklendi, ürün sayısı: ${PRICE_LIST.length}`);
   } catch (e) {
-    console.error("PRICE_LIST okunamadı:", e);
+    console.error("price_list.json okunamadı:", e);
     PRICE_LIST = [];
   }
 }
 loadPriceList();
 
-// ------------------------------------------------------
-// Express Ortamı
-// ------------------------------------------------------
-app.use(express.json({ limit: "2mb" }));
+// Basit model: ürün adı, kategori, SKU vb üzerinden text search
+function findRelatedProducts(message, limit = 8) {
+  if (!PRICE_LIST || PRICE_LIST.length === 0) return [];
 
-// Statik dosyalar (public klasörü)
-app.use(express.static(path.join(__dirname, "public")));
+  const lowerMsg = message.toLowerCase();
 
-// Basit CORS (gerekirse)
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, x-admin-key, Authorization"
-  );
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
-  next();
-});
+  const scored = PRICE_LIST.map((p) => {
+    const name = String(p["Ürün Adı"] || "").toLowerCase();
+    const sku = String(p["SKU"] || "").toLowerCase();
+    const cat = String(p["Kategori"] || "").toLowerCase();
+    const brand = String(p["Marka"] || "").toLowerCase();
+
+    let score = 0;
+    if (name && lowerMsg.includes(name.split(" ")[0])) score += 3;
+    if (sku && lowerMsg.includes(sku)) score += 4;
+    if (cat && lowerMsg.includes(cat)) score += 2;
+    if (brand && lowerMsg.includes(brand)) score += 1;
+
+    if (score === 0 && name) {
+      const tokens = lowerMsg.split(/\s+/);
+      if (tokens.some((t) => name.includes(t))) score += 1;
+    }
+
+    return { product: p, score };
+  });
+
+  return scored
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((x) => x.product);
+}
+
+// Basit kelime temizleme
+function cleanText(raw) {
+  if (!raw) return "";
+  return String(raw).trim();
+}
 
 // ------------------------------------------------------
 // Admin kontrol middleware
@@ -155,13 +175,6 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// ------------------------------------------------------
-// Basit kelime temizleme
-// ------------------------------------------------------
-function cleanText(raw) {
-  if (!raw) return "";
-  return String(raw).trim();
-}
 
 // ------------------------------------------------------
 // Kullanıcı bul / oluştur
@@ -174,8 +187,6 @@ function findOrCreateUserByEmail(email) {
       email,
       used: 0,
       limit: 20,
-      memory: [],
-      projects: [],
     };
     users.push(u);
     saveUsers(users);
@@ -204,35 +215,22 @@ if (hasGoogleOAuth) {
       (accessToken, refreshToken, profile, done) => {
         try {
           const email =
-            profile?.emails && profile.emails[0] && profile.emails[0].value;
+            profile.emails && profile.emails[0] && profile.emails[0].value;
           if (!email) {
-            return done(new Error("Google hesabında e-posta bulunamadı."));
+            return done(new Error("Google profilden e-posta alınamadı"), null);
           }
 
-          const users = loadUsers();
           const cleanEmail = email.trim().toLowerCase();
-
-          let user = users.find((u) => u.email === cleanEmail);
-          if (!user) {
-            user = {
-              email: cleanEmail,
-              used: 0,
-              limit: 30,
-              memoryCount: 0,
-            };
-            users.push(user);
-            saveUsers(users);
-          }
-
-          return done(null, user);
+          const user = findOrCreateUserByEmail(cleanEmail);
+          return done(null, { email: user.email });
         } catch (err) {
-          return done(err);
+          console.error("GoogleStrategy hatası:", err);
+          return done(err, null);
         }
       }
     )
   );
 
-  // Google giriş rotaları
   app.get(
     "/auth/google",
     passport.authenticate("google", { scope: ["profile", "email"] })
@@ -256,19 +254,7 @@ if (hasGoogleOAuth) {
   console.warn(
     "Google OAuth devre dışı: GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_CALLBACK_URL tanımlı değil."
   );
-
-  // Rotalar dursun ama hata vermesin
-  app.get("/auth/google", (req, res) => {
-    res
-      .status(503)
-      .send("Google ile giriş bu sunucuda devre dışı (env tanımlı değil).");
-  });
-
-  app.get("/auth/google/callback", (req, res) => {
-    res.redirect("/login");
-  });
 }
-
 
 
 // ------------------------------------------------------
@@ -444,13 +430,31 @@ function classifyIrrigationCategory(message) {
   return "NON_IRRIGATION";
 }
 
-const STEP_INSTRUCTION = `
-HER ZAMAN kısa yaz.
-Asla tüm çözümü tek seferde verme.
-Sadece ilk adımı yaz ve mutlaka "Devam edeyim mi?" diye sor.
-Kullanıcı izin vermedikçe bir sonraki adımı üretme.
-Büyük listeleri asla tek cevapta yazma.
+// ------------------------------------------------------
+// CEVAP STİLİ (ChatGPT mantığında kısa, adım adım)
+// ------------------------------------------------------
+const STYLE_PROMPT = `
+CEVAP STİLİ TALİMATI (KULLANICIYA GÖSTERME):
+
+- Cevaplarını TÜRKÇE yaz.
+- Bir soruya verdiğin ilk cevap:
+  - En fazla 2–3 kısa başlık içersin.
+  - 6–8 cümleyi geçmesin.
+  - "Adım 1" ve gerekiyorsa "Adım 2"yi özetle, tüm projeyi aynı anda anlatma.
+- Villa / bahçe sulama hesaplarında:
+  1) Çok kısa giriş yap (2-3 cümle)
+  2) Zone sayısı + vana / boru çapı önerisini kısa yaz
+  3) Malzeme listesinin sadece ilk bölümünü ver (kontrol ünitesi + vana + ana boru)
+- Cevap uzun sürerse kendin kes ve şöyle bitir:
+  "İstersen malzeme listesinin detayına geçebilirim."
+- Kullanıcı "devam et" yazarsa:
+  - kaldığın yerden devam et
+  - önceki metni tekrar etme
+  - yine kısa maddeli yaz
+- Asla roman gibi yazma, paragraf şişirme.
+- Gereksiz uyarı/metin/hukuki paragraf yazma.
 `;
+
 // ------------------------------------------------------
 // Ana Prompt – Sistem mesajı
 // ------------------------------------------------------
@@ -476,6 +480,14 @@ GENEL DAVRANIŞ KURALLARI
 - Kullanıcı onay vermeden sonraki adıma geçme.
 - Uzun paragraflar yok → sadece maddeli, kısa cümleler.
 - İşçilik/montaj fiyatı verme.
+SORU:
+"${trimmed}"
+
+KULLANICI BİLGİSİ:
+- E-posta: ${userEmail || "bilinmiyor"}
+
+ÜRÜN / FİYAT BAĞLAMI:
+${productContext || "Şu anda fiyat listesinde eşleşen ürün bulunamadı. Yine de teknik çözüm öner, ürün isimlerini genel bırak."}
 
 PRICE_LIST KURALLARI
 - Ürün price_list’te varsa mutlaka fiyat kullan.
@@ -615,6 +627,8 @@ UNUTMA:
 - Kullanıcının bütçesini, bakım kolaylığını ve Türkiye’de bulunabilirliği dikkate al.
 `;
 }
+
+
 
 // ------------------------------------------------------
 // PDF Teklif Oluşturma
@@ -820,6 +834,49 @@ app.post("/api/register", (req, res) => {
 // KULLANICI & ADMIN API'LERİ
 // ------------------------------------------------------
 
+// Kullanıcı kayıt (e-posta + şifre)
+// Body: { email: "...", password: "..." }
+app.post("/api/register", (req, res) => {
+  const { email, password } = req.body || {};
+
+  if (!email || typeof email !== "string") {
+    return res.status(400).json({ error: "Geçersiz e-posta." });
+  }
+
+  if (!password || typeof password !== "string") {
+    return res.status(400).json({ error: "Şifre zorunludur." });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail.includes("@")) {
+    return res.status(400).json({ error: "Geçersiz e-posta formatı." });
+  }
+
+  const users = loadUsers();
+  const existing = users.find((u) => u.email === cleanEmail);
+
+  if (existing) {
+    return res.status(400).json({ error: "Bu e-posta zaten kayıtlı." });
+  }
+
+  const newUser = {
+    email: cleanEmail,
+    password,         // not: gerçek ortamda hash’lenmeli
+    used: 0,
+    limit: 20,        // istersen DEFAULT_DAILY_LIMIT gibi bir sabite bağla
+  };
+
+  users.push(newUser);
+  saveUsers(users);
+
+  res.json({
+    email: newUser.email,
+    used: newUser.used,
+    limit: newUser.limit,
+    remaining: newUser.limit,
+  });
+});
+
 // Kullanıcı login (e-posta + şifre)
 // Body: { email: "...", password: "..." }
 app.post("/api/login", (req, res) => {
@@ -839,12 +896,12 @@ app.post("/api/login", (req, res) => {
   }
 
   // Kullanıcıları JSON'dan oku
-  const users = loadUsers(); // sende zaten var olması lazım
+  const users = loadUsers();
   const user = users.find((u) => u.email === cleanEmail);
 
   if (!user) {
     return res
-      .status(401)
+      .status(400)
       .json({ error: "Bu e-posta ile kayıtlı kullanıcı bulunamadı." });
   }
 
@@ -868,131 +925,50 @@ app.post("/api/login", (req, res) => {
   });
 });
 
+// ------------------------------------------------------
+// Admin: tüm kullanıcıları listele
+// ------------------------------------------------------
+app.get("/api/admin/users", requireAdmin, (req, res) => {
+  const users = loadUsers();
+  res.json(users);
+});
 
-// Kullanıcı profilini getir (limit ve kullanım)
-app.post("/api/profile", (req, res) => {
-  const { email } = req.body || {};
-  if (!email) {
-    return res.status(400).json({ error: "E-posta eksik." });
-  }
-
+// Admin: tek kullanıcının geçmişini ve limitini getir
+app.get("/api/admin/user/:email", requireAdmin, (req, res) => {
+  const email = (req.params.email || "").toLowerCase();
   const users = loadUsers();
   const user = users.find((u) => u.email === email);
   if (!user) {
     return res.status(404).json({ error: "Kullanıcı bulunamadı." });
   }
-
-  res.json({
-    email: user.email,
-    used: user.used || 0,
-    limit: user.limit || 20,
-    remaining: (user.limit || 20) - (user.used || 0),
-  });
+  res.json(user);
 });
 
-// ADMIN API BLOĞU
-// -------------------------------------------
+// Admin: kullanıcı limitini güncelle
+app.post("/api/admin/user/:email/limit", requireAdmin, (req, res) => {
+  const email = (req.params.email || "").toLowerCase();
+  const { limit } = req.body || {};
 
-// Kullanıcı dosyasını oku (admin için)
-function loadUsersFile() {
-  try {
-    return JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
-  } catch (e) {
-    return [];
-  }
-}
-
-// Kullanıcı dosyasını kaydet (admin için)
-function saveUsersFile(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
-}
-
-// Admin doğrulama middleware (yeniden)
-function checkAdmin(req, res, next) {
-  const key = req.headers["x-admin-key"];
-  if (!key || key !== ADMIN_KEY) {
-    return res.status(403).json({ error: "Geçersiz admin anahtarı." });
-  }
-  next();
-}
-
-// 1) Tüm kullanıcıları listele (özet)
-app.get("/admin/users", checkAdmin, (req, res) => {
-  const all = loadUsersFile();
-
-  const mapped = all.map((u) => ({
-    email: u.email,
-    used: u.used || 0,
-    limit: u.limit || 20,
-    remaining: (u.limit || 20) - (u.used || 0),
-    memoryCount: (u.memory || []).length,
-  }));
-
-  res.json({ users: mapped });
-});
-
-// 2) Kullanıcı güncelle
-app.post("/admin/update-user", checkAdmin, (req, res) => {
-  const { email, limit, resetUsed, resetMemory } = req.body;
-  if (!email) return res.status(400).json({ error: "E-posta eksik." });
-
-  const all = loadUsersFile();
-  const idx = all.findIndex((u) => u.email === email);
-  if (idx === -1)
-    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
-
-  if (typeof limit === "number") {
-    all[idx].limit = limit;
-  }
-  if (resetUsed) {
-    all[idx].used = 0;
-  }
-  if (resetMemory) {
-    all[idx].memory = [];
-  }
-
-  saveUsersFile(all);
-
-  const updated = all[idx];
-  res.json({
-    ok: true,
-    user: {
-      email: updated.email,
-      used: updated.used || 0,
-      limit: updated.limit || 20,
-      remaining: (updated.limit || 20) - (updated.used || 0),
-      memoryCount: (updated.memory || []).length,
-    },
-  });
-});
-
-// 3) Kullanıcı sohbet geçmişi getir
-app.get("/admin/user-history", checkAdmin, (req, res) => {
-  const email = req.query.email;
-  if (!email) {
-    return res.status(400).json({ error: "E-posta eksik." });
-  }
-
-  const all = loadUsersFile();
-  const user = all.find((u) => u.email === email);
-
-  if (!user) {
+  let users = loadUsers();
+  const idx = users.findIndex((u) => u.email === email);
+  if (idx === -1) {
     return res.status(404).json({ error: "Kullanıcı bulunamadı." });
   }
 
-  const history = Array.isArray(user.memory) ? user.memory : [];
+  const newLimit = Number(limit);
+  if (!isFinite(newLimit) || newLimit <= 0) {
+    return res.status(400).json({ error: "Geçersiz limit değeri." });
+  }
 
-  return res.json({
-    success: true,
-    email: user.email,
-    history,
-  });
+  users[idx].limit = newLimit;
+  saveUsers(users);
+
+  res.json({ ok: true, email, limit: newLimit });
 });
 
 // ------------------------------------------------------
 // POST /api/sulama – JSON cevap (chat + proje paneli için)
 // ------------------------------------------------------
-
 app.post("/api/sulama", async (req, res) => {
   let { message, user, mode, designData, project } = req.body || {};
 
@@ -1029,10 +1005,10 @@ app.post("/api/sulama", async (req, res) => {
     });
   }
 
+  // Soru sınıflandırma
   const category = classifyIrrigationCategory(message);
   let effectiveCategory = category;
 
-  // Sulama ile çok alakalı kelimeler varsa, NON_IRRIGATION bile dese IRRIGATION kabul et
   const strongIrrigationHints = ["sprink", "sulama", "damla", "PE100", "vana"];
   const hasStrongHint = strongIrrigationHints.some((k) =>
     message.toLowerCase().includes(k.toLowerCase())
@@ -1041,7 +1017,6 @@ app.post("/api/sulama", async (req, res) => {
     effectiveCategory = "IRRIGATION";
   }
 
-  // Eğer hala NON_IRRIGATION ise, kibarca reddet
   if (effectiveCategory === "NON_IRRIGATION") {
     return res.json({
       reply:
@@ -1095,11 +1070,10 @@ app.post("/api/sulama", async (req, res) => {
   const systemPrompt = buildSystemPrompt();
 
   const messages = [
-  { role: "system", content: JSON.stringify(STEP_CONTROLLER) },
-
-  { role: "system", content: systemPrompt }
-];
-
+    { role: "system", content: JSON.stringify(STEP_CONTROLLER) },
+    { role: "system", content: systemPrompt },
+    { role: "system", content: STYLE_PROMPT },
+  ];
 
   if (irrigationContextText) {
     messages.push({
@@ -1121,10 +1095,9 @@ app.post("/api/sulama", async (req, res) => {
   }
 
   messages.push({
-  role: "user",
-  content: JSON.stringify({ soru: message, email: user.email })
-});
-
+    role: "user",
+    content: JSON.stringify({ soru: message, email: user.email }),
+  });
 
   // Kullanım arttır
   currentUser.used += 1;
@@ -1134,8 +1107,8 @@ app.post("/api/sulama", async (req, res) => {
     const completion = await client.chat.completions.create({
       model: "gpt-4.1",
       messages,
-        max_tokens: STEP_CONTROLLER.maxTokens,
-        temperature: 0.4,
+      max_tokens: STEP_CONTROLLER.maxTokens,
+      temperature: 0.4,
     });
 
     const reply =
@@ -1175,6 +1148,120 @@ app.post("/api/sulama", async (req, res) => {
     });
   }
 });
+
+// ------------------------------------------------------
+// GPT için login gerektirmeyen sulama endpoint'i
+// ------------------------------------------------------
+app.post("/api/gpt-sulama", async (req, res) => {
+  const { message, mode, designData, project } = req.body || {};
+
+  if (!message || typeof message !== "string") {
+    return res.status(400).json({ error: "message zorunlu." });
+  }
+
+  // Soru sınıflandırma
+  const category = classifyIrrigationCategory(message);
+  let effectiveCategory = category;
+
+  // Sulama ile çok alakalı kelimeler varsa, NON_IRRIGATION bile dese IRRIGATION kabul et
+  const strongIrrigationHints = ["sprink", "sulama", "damla", "PE100", "vana"];
+  const hasStrongHint = strongIrrigationHints.some((k) =>
+    message.toLowerCase().includes(k.toLowerCase())
+  );
+  if (category !== "IRRIGATION" && hasStrongHint) {
+    effectiveCategory = "IRRIGATION";
+  }
+
+  // Hâlâ sulama dışıysa kibarca reddet
+  if (effectiveCategory === "NON_IRRIGATION") {
+    return res.json({
+      reply:
+        "Ben sulama sistemleri konusunda uzmanlaşmış bir asistanım. Bu soru sulama ile ilgili olmadığı için yardımcı olamıyorum. Bahçe sulama, damla sulama, yağmurlama, ürün seçimi gibi konularda soru sorabilirsin.",
+      meta: {
+        category,
+        effectiveCategory,
+      },
+    });
+  }
+
+  // Ürün eşleme
+  const relatedProducts = findRelatedProducts(message, 8);
+  let productContext = "";
+  if (relatedProducts.length > 0) {
+    productContext =
+      "İLGİLİ ÜRÜNLER VE FİYATLAR (CSV'den):\n" +
+      relatedProducts
+        .map((p) => {
+          const fiyatMetni = getProductPriceText(p).trim();
+          const fiyat =
+            !fiyatMetni || fiyatMetni === "0"
+              ? "Bu ürün için CSV'de fiyat bilgisi yok."
+              : `${fiyatMetni} TL (KDV dahil varsayılabilir)`;
+          return `- SKU: ${p["SKU"] || ""} | Ürün: ${
+            p["Ürün Adı"] || p["Ad"] || ""
+          } | Fiyat: ${fiyat}`;
+        })
+        .join("\n");
+  }
+
+  const systemPrompt = buildSystemPrompt();
+
+  const messages = [
+    { role: "system", content: JSON.stringify(STEP_CONTROLLER) },
+    { role: "system", content: systemPrompt },
+    { role: "system", content: STYLE_PROMPT },
+  ];
+
+  if (productContext) {
+    messages.push({
+      role: "assistant",
+      content:
+        "(Bu tablo yalnızca senin dahili referansındır, kullanıcıya ASLA aynen yazma) \n" +
+        "Kullanıcı FİYAT sorarsa bu tabloyu referans alabilirsin. Fiyat sormazsa TL bilgisi verme.\n\n" +
+        productContext,
+    });
+  }
+
+  // GPT tarafı için sahte ama sabit bir email kullanıyoruz
+  messages.push({
+    role: "user",
+    content: JSON.stringify({
+      soru: message,
+      email: "gpt@sulamaasistani.com",
+      mode: mode || null,
+      designData: designData || null,
+      project: project || null,
+    }),
+  });
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: "gpt-4.1",
+      messages,
+      max_tokens: STEP_CONTROLLER.maxTokens,
+      temperature: 0.4,
+    });
+
+    const reply =
+      completion.choices?.[0]?.message?.content ||
+      "Şu anda yanıt üretemiyorum, lütfen tekrar deneyin.";
+
+    return res.json({
+      reply,
+      meta: {
+        category,
+        effectiveCategory,
+        productCount: relatedProducts.length,
+      },
+    });
+  } catch (err) {
+    console.error("OpenAI hata (gpt-sulama):", err);
+    return res.status(500).json({
+      error: "OpenAI isteğinde hata oluştu.",
+    });
+  }
+});
+
 
 // ------------------------------------------------------
 // Sunucu başlat
