@@ -71,7 +71,7 @@ const PRICE_LIST_FILE = path.join(__dirname, "price_list.json");
 // Yanıt adımlama (step controller)
 // ------------------------------------------------------
 const STEP_CONTROLLER = {
-  maxTokens: 900,
+  maxTokens: 450,
   chunkSize: 120,
   pauseMs: 0
 };
@@ -1134,7 +1134,7 @@ app.post("/api/sulama", async (req, res) => {
     const completion = await client.chat.completions.create({
       model: "gpt-4.1",
       messages,
-        max_tokens: 200,
+        max_tokens: STEP_CONTROLLER.maxTokens,
         temperature: 0.4,
     });
 
