@@ -68,6 +68,14 @@ const USERS_FILE = path.join(__dirname, "users.json");
 const ADMIN_KEY = process.env.ADMIN_KEY || "";
 const PRICE_LIST_FILE = path.join(__dirname, "price_list.json");
 
+// Yanıt adımlama (step controller)
+// ------------------------------------------------------
+const STEP_CONTROLLER = {
+  maxTokens: 900,
+  chunkSize: 120,
+  pauseMs: 0
+};
+
 // ------------------------------------------------------
 // Yardımcı fonksiyonlar
 // ------------------------------------------------------
