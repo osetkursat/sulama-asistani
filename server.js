@@ -410,7 +410,7 @@ if (hasGoogleOAuth) {
   app.get(
     "/auth/google/callback",
     passport.authenticate("google", {
-      failureRedirect: "/login",
+      failureRedirect: "/login.html",
       session: true,
     }),
     (req, res) => {
@@ -1042,31 +1042,6 @@ app.post("/api/pdf", (req, res) => {
   createOfferPDF(project, res);
 });
 
-// ------------------------------------------------------
-// Google OAuth Routes
-// ------------------------------------------------------
-
-// Google ile giriş/kayıt başlat
-app.get(
-  "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
-
-// Google callback
-app.get(
-  "/auth/google/callback",
-  passport.authenticate("google", { failureRedirect: "/login.html" }),
-  (req, res) => {
-    const email = req.user && req.user.email;
-    // Başarılı girişten sonra chate yönlendir,
-// e-postayı query string ile gönderiyoruz
-    if (email) {
-      res.redirect("/index.html?googleEmail=" + encodeURIComponent(email));
-    } else {
-      res.redirect("/login.html");
-    }
-  }
-);
 
 // Kullanıcı kayıt (e-posta + şifre)
 // Body: { email: "...", password: "..." }
