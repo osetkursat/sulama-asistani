@@ -434,26 +434,46 @@ function classifyIrrigationCategory(message) {
 // CEVAP STİLİ (ChatGPT mantığında kısa, adım adım)
 // ------------------------------------------------------
 const STYLE_PROMPT = `
-CEVAP STİLİ TALİMATI (KULLANICIYA GÖSTERME):
+HER CEVAPTA AŞAĞIDAKİ KURALLARA UY:
 
-- Cevaplarını TÜRKÇE yaz.
-- Bir soruya verdiğin ilk cevap:
-  - En fazla 2–3 kısa başlık içersin.
-  - 6–8 cümleyi geçmesin.
-  - "Adım 1" ve gerekiyorsa "Adım 2"yi özetle, tüm projeyi aynı anda anlatma.
-- Villa / bahçe sulama hesaplarında:
-  1) Çok kısa giriş yap (2-3 cümle)
-  2) Zone sayısı + vana / boru çapı önerisini kısa yaz
-  3) Malzeme listesinin sadece ilk bölümünü ver (kontrol ünitesi + vana + ana boru)
-- Cevap uzun sürerse kendin kes ve şöyle bitir:
-  "İstersen malzeme listesinin detayına geçebilirim."
-- Kullanıcı "devam et" yazarsa:
-  - kaldığın yerden devam et
-  - önceki metni tekrar etme
-  - yine kısa maddeli yaz
-- Asla roman gibi yazma, paragraf şişirme.
-- Gereksiz uyarı/metin/hukuki paragraf yazma.
+1) Fiyatlı malzeme listesi istendiğinde SADECE HTML TABLO kullan.
+   Markdown, pipe tablo, düz liste, format karışımı ASLA üretme.
+
+2) HTML tablo iskelesi ŞU OLACAK (ASLA DEĞİŞTİRME):
+<table class="malzeme-tablo">
+  <thead>
+    <tr>
+      <th>Grup</th>
+      <th>Ürün</th>
+      <th>Açıklama</th>
+      <th>Adet / Metre</th>
+      <th>Birim Fiyat (TL)</th>
+      <th>Tutar (TL)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- Ürün satırları -->
+  </tbody>
+</table>
+
+3) Her ürün bir <tr> içinde olacak. Her <td> doğru sırada olacak.
+4) Fiyat yoksa:
+   - Birim fiyat: "-"
+   - Tutar: "Teklifte belirlenecek"
+
+5) Tablo bittikten sonra şu genel toplam bloğunu üret:
+<p class="genel-toplam">
+  <strong>Genel Toplam (KDV dahil):</strong> XXX TL
+</p>
+
+6) Teknik açıklama veya tasarım anlatımı tablodan önce olacak,
+   fakat HTML tablo ile karışmayacak.
+   Tablonun önüne sadece sade metin paragrafı yaz.
+
+7) Asla "<td> ürün >" gibi bozuk tag, eksik kapanan <td> üretme.
+   Model çıktısı düzenli HTML olacak.
 `;
+
 
 // ------------------------------------------------------
 // Ana Prompt – Sistem mesajı
@@ -482,18 +502,63 @@ GENEL DAVRANIŞ KURALLARI
 - İşçilik/montaj fiyatı verme.
 
 
-PRICE_LIST KURALLARI
-- Ürün price_list’te varsa mutlaka fiyat kullan.
-- Fiyat alanı boşsa: “price_list’te fiyat yok, yerelden sorulmalı” de.
-- Listede olmayan ürünün fiyatını uydurma.
-- Fiyatları KDV dahil yaz.
+FİYAT KURALI:
+- Fiyat verirken sadece backend tarafından sağlanan productContext içindeki fiyatları kullan.
+- Backend tarafından fiyat verilmeyen hiçbir ürüne tahmini veya uydurma fiyat yazma.
+- CSV / JSON içinde fiyat yoksa o ürünün fiyatı "-" ve "Teklifte belirlenecek" olacak.
 
 MALZEME LİSTESİ / TEKLİF CEVAPLARI
-- Önce malzeme listesini çıkar (Ürün, Açıklama, Adet / Metre).
-- Sonra ayrı bölümde “Fiyatlı tablo” ver:
-  - Kolonlar: Ürün, Açıklama, Adet, Birim Fiyat (TL), Toplam (TL).
-- PRICE_LIST’te olmayan kalemleri tablonun altına “Yerelden fiyat alınacak kalemler” başlığıyla ayrı listele.
-- İşçilik maliyeti, montaj ücreti, proje çizim bedeli vb. HİÇBİRİ için fiyat yazma.
+-- **AŞAĞIDAKİ “HTML TABLO KURALLARI” ZORUNLUDUR — ASLA DEĞİŞMEYECEK!** ---
+
+HTML TABLO FORMAT KURALLARI (ÇOK ÖNEMLİ)
+
+1) Fiyatlı tablo ÜRETİRKEN SADECE aşağıdaki HTML iskeletini kullan:
+
+<table class="malzeme-tablo">
+  <thead>
+    <tr>
+      <th>Grup</th>
+      <th>Ürün</th>
+      <th>Açıklama</th>
+      <th>Adet / Metre</th>
+      <th>Birim Fiyat (TL)</th>
+      <th>Tutar (TL)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- Ürün satırları -->
+  </tbody>
+</table>
+
+2) Tabloyu ASLA değiştirme:
+- <thead> sabit
+- 6 kolon sabit
+- Tüm <tr> doğru kapanmalı
+- Markdown tablo, pipe tablo, bozuk HTML YASAK.
+
+3) Her ürün mutlaka tek <tr> içinde olacak.
+
+4) Fiyat yoksa:
+- Birim fiyat = "-"
+- Tutar = "Teklifte belirlenecek"
+
+5) Tablo bittikten sonra şu formatta genel toplam satırı ZORUNLU:
+
+<p class="genel-toplam">
+  <strong>Genel Toplam (KDV dahil):</strong> XXX TL
+</p>
+
+6) Tabloyu bozan karakterler kesinlikle yasaktır:
+- "|", "|||" ile başlayan satırlar
+- "<td> ürün >" gibi bozuk tag’ler
+- Eksik kapanan <td> ve <tr>
+- HTML’siz fiyat listesi
+- Karma liste
+
+TABLO = HTML.  
+HTML = Yukarıdaki yapı.  
+Bu yapı dışına ASLA çıkma.
+
 
 OTOMATİK MALZEME SEÇİM KURALLARI
 Bu kurallar, bahçe için malzeme listesi çıkarırken ve teklif hazırlarken GEÇERLİDİR.
@@ -960,22 +1025,21 @@ app.post("/api/admin/user/:email/limit", requireAdmin, (req, res) => {
 });
 
 // ------------------------------------------------------
-// POST /api/sulama – JSON cevap (chat + proje paneli için)
+// POST /api/sulama – STREAM cevap (chat + proje paneli için)
 // ------------------------------------------------------
 app.post("/api/sulama", async (req, res) => {
   let { message, user, mode, designData, project } = req.body || {};
 
   if (!message || typeof message !== "string") {
-    return res.status(400).json({ error: "message zorunlu." });
+    return res.status(400).send("message zorunlu.");
   }
 
   // Kullanıcı kontrolü
   if (!user || !user.email) {
-    return res
-      .status(400)
-      .json({ error: "Kullanıcı bilgisi (email) zorunludur." });
+    return res.status(400).send("Kullanıcı bilgisi (email) zorunludur.");
   }
 
+  // Kullanıcı yükle / oluştur
   let users = loadUsers();
   let currentUser = users.find((u) => u.email === user.email);
   if (!currentUser) {
@@ -991,11 +1055,11 @@ app.post("/api/sulama", async (req, res) => {
 
   // Limit kontrolü
   if (isUserLimitExceeded(currentUser)) {
-    return res.status(403).json({
-      error:
-        "Soru limitiniz dolmuştur. Lütfen admin ile iletişime geçin veya limitinizi yükseltin.",
-      code: "LIMIT_EXCEEDED",
-    });
+    return res
+      .status(403)
+      .send(
+        "Soru limitiniz dolmuştur. Lütfen admin ile iletişime geçin veya limitinizi yükseltin."
+      );
   }
 
   // Soru sınıflandırma
@@ -1010,18 +1074,16 @@ app.post("/api/sulama", async (req, res) => {
     effectiveCategory = "IRRIGATION";
   }
 
+  // Sulama dışıysa, kısa metni direkt gönder (JSON değil, düz text!)
   if (effectiveCategory === "NON_IRRIGATION") {
-    return res.json({
-      reply:
-        "Ben sulama sistemleri konusunda uzmanlaşmış bir asistanım. Bu soru sulama ile ilgili olmadığı için yardımcı olamıyorum. Bahçe sulama, damla sulama, yağmurlama, ürün seçimi gibi konularda soru sorabilirsin.",
-      meta: {
-        category,
-        effectiveCategory,
-      },
-    });
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.send(
+      "Ben sulama sistemleri konusunda uzmanlaşmış bir asistanım. Bu soru sulama ile ilgili olmadığı için yardımcı olamıyorum. Bahçe sulama, damla sulama, yağmurlama, ürün seçimi gibi konularda soru sorabilirsin."
+    );
+    return;
   }
 
-  // Kullanıcının hafızasından son 20 mesajı al
+  // Kullanıcının hafızasından son 20 mesaj
   const history = Array.isArray(currentUser.memory)
     ? currentUser.memory.slice(-20)
     : [];
@@ -1097,50 +1159,63 @@ app.post("/api/sulama", async (req, res) => {
   saveUsers(users);
 
   try {
+    // *** BURADAN İTİBAREN STREAM ***
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Transfer-Encoding", "chunked");
+
     const completion = await client.chat.completions.create({
       model: "gpt-4.1",
       messages,
       max_tokens: STEP_CONTROLLER.maxTokens,
       temperature: 0.4,
+      stream: true,
     });
 
-    const reply =
-      completion.choices?.[0]?.message?.content ||
-      "Şu anda yanıt üretemiyorum, lütfen tekrar deneyin.";
+    let fullText = "";
 
-    // Hafızayı güncelle
+    for await (const chunk of completion) {
+      const delta = chunk.choices?.[0]?.delta?.content || "";
+      if (!delta) continue;
+
+      fullText += delta;
+
+      // Kullanıcıya her parçayı anında gönder
+      res.write(delta);
+    }
+
+    // Stream bitti
+    res.end();
+
+    // Hafızayı güncelle (cevabı da kaydedelim)
     users = loadUsers();
     currentUser = users.find((u) => u.email === user.email);
-    if (!currentUser) return res.json({ reply });
+    if (!currentUser) return;
 
     if (!Array.isArray(currentUser.memory)) currentUser.memory = [];
     currentUser.memory.push({ role: "user", content: message });
-    currentUser.memory.push({ role: "assistant", content: reply });
+    currentUser.memory.push({ role: "assistant", content: fullText });
 
     if (currentUser.memory.length > 40) {
       currentUser.memory = currentUser.memory.slice(-40);
     }
 
     saveUsers(users);
-
-    res.json({
-      reply,
-      meta: {
-        category,
-        effectiveCategory,
-        used: currentUser.used || 0,
-        limit: currentUser.limit || 20,
-        remaining: (currentUser.limit || 20) - (currentUser.used || 0),
-        productCount: relatedProducts.length,
-      },
-    });
   } catch (err) {
-    console.error("OpenAI hata:", err);
-    res.status(500).json({
-      error: "OpenAI isteğinde hata oluştu.",
-    });
+    console.error("OpenAI stream hata (/api/sulama):", err);
+
+    if (!res.headersSent) {
+      res
+        .status(500)
+        .send("OpenAI isteğinde hata oluştu, lütfen tekrar deneyin.");
+    } else {
+      // headers gönderildiyse, en azından stream'i düzgün kapat
+      try {
+        res.end();
+      } catch (_) {}
+    }
   }
 });
+
 
 // ------------------------------------------------------
 // GPT için login gerektirmeyen sulama endpoint'i

@@ -557,6 +557,44 @@
       margin: 4px 0;
     }
 
+        /* Teklif tabloları ve genel toplam alanı için */
+    .message-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 13px;
+      background: rgba(15, 23, 42, 0.98);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .message-content th,
+    .message-content td {
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(31, 41, 55, 0.9);
+      text-align: left;
+    }
+
+    .message-content th {
+      font-weight: 600;
+      color: #e5e7eb;
+      background: rgba(15, 23, 42, 1);
+    }
+
+    .message-content tr:last-child td {
+      border-bottom: none;
+    }
+
+    .message-content .genel-toplam {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(31, 41, 55, 0.9);
+      font-weight: 600;
+      font-size: 14px;
+      color: #bbf7d0;
+    }
+
+
     .thinking-indicator {
       display: none;
       align-items: center;
@@ -1055,6 +1093,45 @@
         min-height: 48px;
       }
     }
+
+    /* === PROFESYONEL TEKLİF TABLOSU === */
+.malzeme-tablo {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  background: rgba(15, 23, 42, 0.98);
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+.malzeme-tablo th,
+.malzeme-tablo td {
+  border-bottom: 1px solid rgba(31, 41, 55, 0.8);
+  padding: 10px;
+  color: #e5e7eb;
+  vertical-align: top;
+}
+
+.malzeme-tablo th {
+  font-weight: 600;
+  background: rgba(31, 41, 55, 1);
+  text-align: left;
+}
+
+.malzeme-tablo tr:last-child td {
+  border-bottom: none;
+}
+
+.genel-toplam {
+  margin-top: 12px;
+  padding: 10px 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #bbf7d0;
+  border-top: 1px solid rgba(31, 41, 55, 0.8);
+}
+
   </style>
 </head>
 <body>
@@ -1265,7 +1342,8 @@
       var isSystemWarning = opts.systemWarning || false;
 
       var wrapper = document.createElement("div");
-      wrapper.className = "message " + role + (isSystemWarning ? " system-warning" : "");
+      wrapper.className =
+        "message " + role + (isSystemWarning ? " system-warning" : "");
 
       var icon = document.createElement("div");
       icon.className = "message-icon " + role;
@@ -1294,19 +1372,17 @@
 
       var modelTag = document.createElement("span");
       modelTag.className = "message model-tag";
-      modelTag.textContent = role === "assistant" ? "Model: SulamaAsistani-GPT" : "";
+      modelTag.textContent =
+        role === "assistant" ? "Model: SulamaAsistani-GPT" : "";
       header.appendChild(modelTag);
 
       var content = document.createElement("div");
       content.className = "message-content";
 
       if (text) {
-        var paragraphs = text.split(/\n{2,}/);
-        paragraphs.forEach(function (p) {
-          var pEl = document.createElement("p");
-          pEl.textContent = p.trim();
-          content.appendChild(pEl);
-        });
+        // Satır sonlarını koruyarak HTML olarak bas
+        var safe = text.replace(/\n/g, "<br>");
+        content.innerHTML = safe;
       }
 
       bubble.appendChild(header);
@@ -1316,9 +1392,12 @@
       wrapper.appendChild(bubble);
 
       messagesEl.appendChild(wrapper);
-
       messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      // STREAM için content elementini geri döndürüyoruz
+      return { wrapper: wrapper, bubble: bubble, content: content };
     }
+
 
     function setThinking(isThinking) {
       if (isThinking) {
@@ -1367,128 +1446,149 @@
         userInputEl.focus();
       });
     });
+    async function sendAssistantMessage(text, storedUser) {
+  var projectState = null;
 
-    chatForm.addEventListener("submit", function (e) {
-      e.preventDefault();
-      if (chatLocked) return;
+  try {
+    var res = await fetch("/api/sulama", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: text,
+        designData: projectState,
+        user: { email: storedUser.email }
+      })
+    });
 
-      var text = userInputEl.value.trim();
-      if (!text) return;
+    // Limit / hata kontrolleri
+    if (!res.ok || !res.body) {
+      var rawErr = "";
+      try {
+        rawErr = await res.text();
+      } catch (e) {
+        rawErr = "";
+      }
 
-      if (usedToday >= dailyLimit) {
+      if (res.status === 403 && rawErr.toLowerCase().indexOf("limit") !== -1) {
+        setThinking(false);
         addMessage(
           "assistant",
-          "Günlük soru limitiniz dolmuş görünüyor. Yarın tekrar deneyebilirsiniz veya yöneticinizden limit artırımı talep edebilirsiniz.",
+          rawErr ||
+            "Günlük soru limitiniz sunucu tarafında dolmuş görünüyor. Lütfen daha sonra tekrar deneyin veya yöneticinizle iletişime geçin.",
           { systemWarning: true }
         );
         setInputDisabled(true);
         return;
       }
 
-      addMessage("user", text);
-      userInputEl.value = "";
-      updateCharCounter();
+      setThinking(false);
+      addMessage(
+        "assistant",
+        "Sunucudan geçerli bir yanıt alınamadı. (" + rawErr + ")"
+      );
+      return;
+    }
 
-      usedToday++;
-      updateUsageBar();
+    var reader = res.body.getReader();
+    var decoder = new TextDecoder("utf-8");
 
-      setInputDisabled(true);
-      setThinking(true);
+    // Asistan balonunu oluştur (boş)
+    var msgObj = addMessage("assistant", "", {});
+    var contentEl = msgObj && msgObj.content ? msgObj.content : null;
 
-      var projectState = null;
+    // Tüm cevabı burada biriktireceğiz
+    var fullText = "";
 
-      // localStorage'dan kullanıcı bilgisi çek
-      var storedUser = null;
-      try {
-        var rawUser = localStorage.getItem("user");
-        if (rawUser) {
-          storedUser = JSON.parse(rawUser);
-        }
-      } catch (e) {
-        storedUser = null;
+    // Artık "düşünüyor" yazısını kapatabiliriz
+    setThinking(false);
+
+    while (true) {
+      var result = await reader.read();
+      if (result.done) break;
+
+      var chunk = decoder.decode(result.value, { stream: true });
+      if (!chunk) continue;
+
+      fullText += chunk;
+
+      if (contentEl) {
+        // STREAM SIRASINDA: sade text olarak göster (HTML'e dokunma)
+        contentEl.textContent += chunk;
       }
 
-      if (!storedUser || !storedUser.email) {
-        // Backend hata fırlatmasın diye önden yakalıyoruz
-        setThinking(false);
-        setInputDisabled(false);
-        addMessage(
-          "assistant",
-          "Devam etmeden önce lütfen giriş yapın. Giriş sayfasından e-posta ile oturum açtıktan sonra bu ekrana geri dönün.",
-          { systemWarning: true }
-        );
-        return;
-      }
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
 
-      fetch("/api/sulama", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: text,
-          designData: projectState,
-          user: { email: storedUser.email }
-        })
-      })
-        .then(function (res) {
-          var status = res.status;
-          var ok = res.ok;
-          return res.text().then(function (raw) {
-            var data = null;
-            try {
-              data = raw ? JSON.parse(raw) : null;
-            } catch (e) {
-              data = null;
-            }
-            return { ok: ok, status: status, raw: raw, data: data || {} };
-          });
-        })
-        .then(function (result) {
-          var ok = result.ok;
-          var status = result.status;
-          var raw = result.raw || "";
-          var data = result.data || {};
+    // STREAM BİTTİKTEN SONRA: artık tam metni HTML olarak bas
+    if (contentEl) {
+      contentEl.innerHTML = fullText.replace(/&lt;/g, "<").replace(/&gt;/g, ">");
 
-          if (!ok) {
-            if (
-              status === 403 &&
-              (data.code === "LIMIT_EXCEEDED" ||
-                String(data.error || raw || "")
-                  .toLowerCase()
-                  .indexOf("limit") !== -1)
-            ) {
-              addMessage(
-                "assistant",
-                "Günlük soru limitiniz sunucu tarafında dolmuş görünüyor. Lütfen daha sonra tekrar deneyin veya yöneticinizle iletişime geçin.",
-                { systemWarning: true }
-              );
-              setInputDisabled(true);
-              return;
-            }
-
-            throw new Error("HTTP " + status + " - " + raw);
-          }
-
-          var reply = data.reply || data.answer || data.message;
-          if (!reply) {
-            reply =
-              "Sunucudan geçerli bir yanıt alınamadı. Lütfen tekrar deneyin veya yöneticinizle iletişime geçin.";
-          }
-
-          addMessage("assistant", reply);
-        })
-        .catch(function (err) {
-    console.error("İstek hatası:", err);
+    }
+  } catch (err) {
+    console.error("İstek hatası (stream):", err);
+    setThinking(false);
     addMessage(
       "assistant",
       "Sunucuyla bağlantıda bir sorun oluştu. Lütfen biraz sonra tekrar dene."
     );
-  })
-        .finally(function () {
-          setInputDisabled(false);
-          setThinking(false);
-          userInputEl.focus();
-        });
-    });
+  } finally {
+    setInputDisabled(false);
+    userInputEl.focus();
+  }
+}
+
+
+    chatForm.addEventListener("submit", function (e) {
+  e.preventDefault();
+  if (chatLocked) return;
+
+  var text = userInputEl.value.trim();
+  if (!text) return;
+
+  if (usedToday >= dailyLimit) {
+    addMessage(
+      "assistant",
+      "Günlük soru limitine ulaştınız. Lütfen yarın tekrar deneyin.",
+      { systemWarning: true }
+    );
+    return;
+  }
+
+  addMessage("user", text);
+  userInputEl.value = "";
+  updateCharCounter();
+
+  usedToday++;
+  updateUsageBar();
+
+  setInputDisabled(true);
+  setThinking(true);
+
+  // localStorage’dan kullanıcı bilgisi çek
+  var storedUser = null;
+  try {
+    var rawUser = localStorage.getItem("user");
+    if (rawUser) storedUser = JSON.parse(rawUser);
+  } catch (e) {
+    storedUser = null;
+  }
+
+  if (!storedUser || !storedUser.email) {
+    setThinking(false);
+    setInputDisabled(false);
+    addMessage(
+      "assistant",
+      "Devam edebilmek için önce giriş yapmanız gerekiyor.",
+      { systemWarning: true }
+    );
+    return;
+  }
+
+  // STREAM ÇAĞRISI
+  sendAssistantMessage(text, storedUser);
+});
+
+
 
     function logoutUser() {
       try {
