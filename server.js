@@ -67,7 +67,7 @@ const client = new OpenAI({
 // ------------------------------------------------------
 const USERS_FILE = path.join(__dirname, "users.json");
 const ADMIN_KEY = process.env.ADMIN_KEY || "";
-const PRICE_LIST_FILE = path.join(__dirname, "price_list.json");
+const PRICE_LIST_FILE = path.join(__dirname, "data", "price_list.json");
 
 // Yanıt adımlama (step controller)
 // ------------------------------------------------------
@@ -111,7 +111,7 @@ let PRICE_LIST = [];
 function loadPriceList() {
   try {
     if (!fs.existsSync(PRICE_LIST_FILE)) {
-      console.warn("price_list.json bulunamadı.");
+      console.warn(`Fiyat listesi bulunamadı: ${PRICE_LIST_FILE}`);
       PRICE_LIST = [];
       return;
     }
@@ -119,45 +119,13 @@ function loadPriceList() {
     PRICE_LIST = JSON.parse(raw || "[]");
     console.log(`PRICE_LIST yüklendi, ürün sayısı: ${PRICE_LIST.length}`);
   } catch (e) {
-    console.error("price_list.json okunamadı:", e);
+    console.error(`Fiyat listesi okunamadı: ${PRICE_LIST_FILE}`, e);
     PRICE_LIST = [];
   }
 }
 loadPriceList();
 
 // Basit model: ürün adı, kategori, SKU vb üzerinden text search
-function findRelatedProducts(message, limit = 8) {
-  if (!PRICE_LIST || PRICE_LIST.length === 0) return [];
-
-  const lowerMsg = message.toLowerCase();
-
-  const scored = PRICE_LIST.map((p) => {
-    const name = String(p["Ürün Adı"] || "").toLowerCase();
-    const sku = String(p["SKU"] || "").toLowerCase();
-    const cat = String(p["Kategori"] || "").toLowerCase();
-    const brand = String(p["Marka"] || "").toLowerCase();
-
-    let score = 0;
-    if (name && lowerMsg.includes(name.split(" ")[0])) score += 3;
-    if (sku && lowerMsg.includes(sku)) score += 4;
-    if (cat && lowerMsg.includes(cat)) score += 2;
-    if (brand && lowerMsg.includes(brand)) score += 1;
-
-    if (score === 0 && name) {
-      const tokens = lowerMsg.split(/\s+/);
-      if (tokens.some((t) => name.includes(t))) score += 1;
-    }
-
-    return { product: p, score };
-  });
-
-  return scored
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map((x) => x.product);
-}
-
 // Basit kelime temizleme
 function cleanText(raw) {
   if (!raw) return "";
@@ -1094,7 +1062,7 @@ app.post("/api/sulama", async (req, res) => {
   let productContext = "";
   if (relatedProducts.length > 0) {
     productContext =
-      "İLGİLİ ÜRÜNLER VE FİYATLAR (CSV'den):\n" +
+      "İLGİLİ ÜRÜNLER VE FİYATLAR (JSON'den):\n" +
       relatedProducts
         .map((p) => {
           const fiyatMetni = getProductPriceText(p).trim();
@@ -1257,7 +1225,7 @@ app.post("/api/gpt-sulama", async (req, res) => {
   let productContext = "";
   if (relatedProducts.length > 0) {
     productContext =
-      "İLGİLİ ÜRÜNLER VE FİYATLAR (CSV'den):\n" +
+      "İLGİLİ ÜRÜNLER VE FİYATLAR (JSON'den):\n" +
       relatedProducts
         .map((p) => {
           const fiyatMetni = getProductPriceText(p).trim();
