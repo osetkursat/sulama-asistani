@@ -67,7 +67,10 @@ const client = new OpenAI({
 // ------------------------------------------------------
 const USERS_FILE = path.join(__dirname, "users.json");
 const ADMIN_KEY = process.env.ADMIN_KEY || "";
-const PRICE_LIST_FILE = path.join(__dirname, "data", "price_list.json");
+// Fiyat listesi tek kaynak: price_list.json
+// Render'da genelde /data altında; local testte bazen proje kökünde olabiliyor.
+const PRICE_LIST_FILE =
+  process.env.PRICE_LIST_FILE || path.join(__dirname, "data", "price_list.json");
 
 // Yanıt adımlama (step controller)
 // ------------------------------------------------------
@@ -82,6 +85,29 @@ const STEP_CONTROLLER = {
 // ------------------------------------------------------
 // Yardımcı fonksiyonlar
 // ------------------------------------------------------
+function parseQuantityFromText(message) {
+  const t = String(message || "").toLowerCase();
+
+  const patterns = [
+    /(\d+)\s*(adet|tane|pcs|pc)\b/, // 20 adet
+    /\bx\s*(\d+)\b/,               // x20
+    /\b(\d+)\s*x\b/,               // 20x
+    /\b(adet|tane)\s*(\d+)\b/      // adet 20
+  ];
+
+  for (const p of patterns) {
+    const m = t.match(p);
+    if (m) {
+      const num = m.find(v => /^\d+$/.test(v));
+      if (num) {
+        const q = parseInt(num, 10);
+        if (Number.isFinite(q) && q > 0) return q;
+      }
+    }
+  }
+  return 1;
+}
+
 
 // ------------------------------------------------------
 
@@ -110,12 +136,23 @@ function saveUsers(users) {
 let PRICE_LIST = [];
 function loadPriceList() {
   try {
-    if (!fs.existsSync(PRICE_LIST_FILE)) {
-      console.warn("price_list.json bulunamadı.");
+    let filePath = PRICE_LIST_FILE;
+
+    // fallback: proje kökünde price_list.json varsa onu da dene
+    if (!fs.existsSync(filePath)) {
+      const alt = path.join(__dirname, "price_list.json");
+      if (fs.existsSync(alt)) filePath = alt;
+    }
+
+    if (!fs.existsSync(filePath)) {
+      console.warn(
+        "price_list.json bulunamadı. (data/price_list.json veya ./price_list.json)"
+      );
       PRICE_LIST = [];
       return;
     }
-    const raw = fs.readFileSync(PRICE_LIST_FILE, "utf8");
+
+    const raw = fs.readFileSync(filePath, "utf8");
     PRICE_LIST = JSON.parse(raw || "[]");
     console.log(`PRICE_LIST yüklendi, ürün sayısı: ${PRICE_LIST.length}`);
   } catch (e) {
@@ -123,6 +160,7 @@ function loadPriceList() {
     PRICE_LIST = [];
   }
 }
+
 loadPriceList();
 
 
@@ -136,14 +174,43 @@ function isPriceListTableRequest(message) {
   if (!t) return false;
 
   // "sonraki 20", "önceki", "sayfa 2" gibi komutları da tablo modu say
-  if (t.startsWith("sonraki") || t.startsWith("önceki") || t.startsWith("sayfa")) return true;
+  if (
+    t.startsWith("sonraki") ||
+    t.startsWith("önceki") ||
+    t.startsWith("sayfa")
+  )
+    return true;
 
   // fiyat listesi / stok / tablo istemi
   const keywords = [
-    "fiyat list", "fiyatları listele", "fiyatlari listele", "fiyat tablosu",
-    "stok list", "listeyi göster", "tüm fiyat", "tum fiyat", "tüm ürün",
-    "tum urun", "price_list", "price list"
+    "fiyat list",
+    "fiyatları listele",
+    "fiyatlari listele",
+    "fiyat tablosu",
+    "stok list",
+    "listeyi göster",
+    "tüm fiyat",
+    "tum fiyat",
+    "tüm ürün",
+    "tum urun",
+    "price_list",
+    "price list",
+    "tüm liste",
+    "tum liste",
+    "tüm listeyi ver",
+    "tum listeyi ver",
+    "liste ver",
+    "tam liste",
+    "bütün liste",
+    "butun liste",
+    "malzeme listesi",
+    "malzemeleri listele",
+    "tüm malzeme",
+    "tum malzeme",
+    "teklif tablosu",
+    "teklif listesi",
   ];
+
   return keywords.some((k) => t.includes(k));
 }
 
@@ -163,6 +230,16 @@ function ensureTableState(userObj) {
   if (!isFinite(Number(userObj.tableState.pageSize))) userObj.tableState.pageSize = PRICE_TABLE_DEFAULT_PAGE_SIZE;
   return userObj.tableState;
 }
+
+function getPriceBySku(sku) {
+  if (!sku) return null;
+  const s = String(sku).trim().toUpperCase();
+  return PRICE_LIST.find(p => String(p["SKU"]||"").trim().toUpperCase() === s) || null;
+}
+
+
+// !!! kritik: prod yoksa unitPrice boş kalacak, GPT dolduramayacak
+
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -251,38 +328,6 @@ function buildPriceListPageForUser(currentUser, message) {
   };
 }
 
-// Basit model: ürün adı, kategori, SKU vb üzerinden text search
-function findRelatedProducts(message, limit = 8) {
-  if (!PRICE_LIST || PRICE_LIST.length === 0) return [];
-
-  const lowerMsg = message.toLowerCase();
-
-  const scored = PRICE_LIST.map((p) => {
-    const name = String(p["Ürün Adı"] || "").toLowerCase();
-    const sku = String(p["SKU"] || "").toLowerCase();
-    const cat = String(p["Kategori"] || "").toLowerCase();
-    const brand = String(p["Marka"] || "").toLowerCase();
-
-    let score = 0;
-    if (name && lowerMsg.includes(name.split(" ")[0])) score += 3;
-    if (sku && lowerMsg.includes(sku)) score += 4;
-    if (cat && lowerMsg.includes(cat)) score += 2;
-    if (brand && lowerMsg.includes(brand)) score += 1;
-
-    if (score === 0 && name) {
-      const tokens = lowerMsg.split(/\s+/);
-      if (tokens.some((t) => name.includes(t))) score += 1;
-    }
-
-    return { product: p, score };
-  });
-
-  return scored
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map((x) => x.product);
-}
 
 // Basit kelime temizleme
 function cleanText(raw) {
@@ -396,23 +441,41 @@ function isUserLimitExceeded(user) {
 // getProductPriceText – fiyat metnini ortak fonksiyon
 // ------------------------------------------------------
 function getProductPriceText(p) {
-  // Birden fazla olası kolon ismi
-  const priceKeys = ["Fiyat", "Fiyat (TL)", "Fiyat TL", "SatisFiyat", "Price"];
+  const raw =
+    p["Fiyat TL (KDV dahil)"] ??
+    p["Fiyat TL (KDV Dahil)"] ??
+    p["Fiyat (KDV dahil)"] ??
+    p["Fiyat (KDV Dahil)"] ??
+    p["Fiyat (TL)"] ??
+    p["Fiyat TL"] ??
+    p["Fiyat"] ??
+    p["price"] ??
+    p["Price"] ??
+    "";
 
-  for (const key of priceKeys) {
-    if (p[key] != null && p[key] !== "") {
-      return String(p[key]);
-    }
-  }
-  return "";
+  if (raw == null) return "";
+
+  // "33,98" -> "33.98"
+  let s = String(raw).trim();
+  if (!s) return "";
+
+  // Binlik ayırıcı vs. gelebilir diye normalize:
+  // "1.234,56" -> "1234.56"
+  s = s.replace(/\./g, "").replace(",", ".");
+
+  const n = Number(s);
+  if (!Number.isFinite(n) || n <= 0) return "";
+
+  // İstersen burada formatlayabilirsin
+  return n.toFixed(2);
 }
+
 
 // ------------------------------------------------------
 // Basit ürün arama – PRICE_LIST içinden
 // ------------------------------------------------------
 
-function findRelatedProducts(query, limit = 10) {
-  if (!query || !PRICE_LIST || !Array.isArray(PRICE_LIST)) return [];
+function findRelatedProducts(query, limit = 8) {
 
   let q = String(query).toLowerCase();
 
@@ -446,8 +509,8 @@ function findRelatedProducts(query, limit = 10) {
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map((x) => x.p);
-}
 
+}
 // ------------------------------------------------------
 // Kategori sınıflandırma (sulama mı değil mi?)
 // ------------------------------------------------------
@@ -600,6 +663,41 @@ HER CEVAPTA AŞAĞIDAKİ KURALLARA UY:
    Model çıktısı düzenli HTML olacak.
 `;
 
+const PRICE_STRICT_RULE = `
+KESİN KURAL (FİYAT):
+- Kullanıcı fiyat/liste/teklif isterse ASLA fiyat yazma, ASLA TL yazma.
+- Sadece ilgili ürünlerin SKU listesini (maks 20 adet) JSON formatında döndür:
+  {"skus":["ARCPK2534","..."]}
+- Listede yoksa {"skus":[]} döndür.
+`;
+
+
+
+function isSinglePriceQuestion(message) {
+  const t = String(message || "").toLowerCase();
+  if (!t) return false;
+
+  // fiyat / kaç para gibi niyet var mı?
+  const hasPriceIntent = /fiyat|ücret|ucret|kaç para|kac para|ne kadar|tl|₺/.test(t);
+  if (!hasPriceIntent) return false;
+
+  // Adet bilgisi var mı?
+  const hasQuantityIntent = /\d+\s*(adet|pcs?)/.test(t); // "20 adet", "15 pcs" gibi
+
+  if (hasQuantityIntent) {
+    // Adet bilgisini parse et
+    const quantityMatch = t.match(/\d+\s*(adet|pcs?)/);
+    const quantity = parseInt(quantityMatch[0], 10); // Adeti yakala
+    return { quantity };
+  }
+
+  // liste/tablo/sayfalama ise tek ürün fiyatı sayma
+  if (isPriceListTableRequest(t)) return false;
+  if (/liste|tablo|tüm|tum|stok|malzeme/.test(t)) return false;
+
+  return true;
+}
+
 
 // ------------------------------------------------------
 // Ana Prompt – Sistem mesajı
@@ -692,7 +790,7 @@ Bu kurallar, bahçe için malzeme listesi çıkarırken ve teklif hazırlarken G
 1) KONTROL ÜNİTESİ SEÇİMİ
 - Müşteri elektrikli (220 V) sistem istiyorsa:
   - Sadece 1 model öner:
-    - Rain Bird ESP-TM2 serisinden, istasyon sayısına uygun bir model seç (ör: 4 istasyon gerekliyse ESP-TM2 4).
+    - Rain Bird ESP-TM2 serisinden, istasyon sayısına uygun bir model seç.
 - Müşteri pilli sistem (elektrik yok) istiyorsa:
   - Sadece 1 model öner:
     - Rain Bird ESP-9V serisinden, istasyon sayısına uygun bir model seç.
@@ -704,74 +802,74 @@ Bu kurallar, bahçe için malzeme listesi çıkarırken ve teklif hazırlarken G
 - Orta-büyük bahçeler (300–800 m² arası):
   - Gerekirse karışık kullanım (uygun yerlerde sprey, uygun yerlerde rotor) önerebilirsin.
 - Büyük bahçeler (800 m² ve üzeri):
-  - Ağırlıklı olarak rotor sprinkler öner.
+  - Ağırlıklı olarak rotor sprinkler öner. 
 - Cevapta bahçe alanını yorumlayarak “Bu alan için sprey/rotor tercih sebebi şu...” diye 1–2 cümle ile açıkla.
 
 3) SOLENOID VANA MODELİ (Boru çapı ve elektrik durumuna göre)
 Bahçede ELEKTRİK VARSA (24 V AC):
-- Ana boru 1" ise: Rain Bird 100-HV 24 V modelini seç.
-- Ana boru 1 1/2" ise: Rain Bird 150-PGA 24 V modelini seç.
-- Ana boru 2" ise: Rain Bird 200-PGA 24 V modelini seç.
+- Ana boru 1" ise: Rain Bird 100-HV 24 V modelini seç. 
+- Ana boru 1 1/2" ise: Rain Bird 150-PGA 24 V modelini seç. 
+- Ana boru 2" ise: Rain Bird 200-PGA 24 V modelini seç. 
 
 Bahçede ELEKTRİK YOKSA (PİLLİ sistem, 9 V):
-- Ana boru 1" ise: Rain Bird 100-HV 9 V modelini seç.
-- Ana boru 1 1/2" ise: Rain Bird 150-PGA 9 V modelini seç.
-- Ana boru 2" ise: Rain Bird 200-PGA 9 V modelini seç.
+- Ana boru 1" ise: Rain Bird 100-HV 9 V modelini seç. 
+- Ana boru 1 1/2" ise: Rain Bird 150-PGA 9 V modelini seç. 
+- Ana boru 2" ise: Rain Bird 200-PGA 9 V modelini seç. 
 
 4) PRİZ KOLYE ADEDİ
-- Sprink + rotor toplam adedi kadar ANA BORUYA UYGUN priz kolye seç.
+- Sprink + rotor toplam adedi kadar ANA BORUYA UYGUN priz kolye seç. 
   - Örnek: Toplam 12 sprink/rotor varsa → 12 adet ana boru çapına uygun priz kolye.
 
 5) LATERAL HAT BAĞLANTISI
-- Lateral hat PE boru çapı 20 mm kabul edilir (küçük/orta bahçeler için).
-- Priz kolye sayısının 2 katı kadar 20 mm lateral PE boruya uygun KAPLIN ERKEK DİRSEK seç:
+- Lateral hat PE boru çapı 20 mm kabul edilir (küçük/orta bahçeler için). 
+- Priz kolye sayısının 2 katı kadar 20 mm lateral PE boruya uygun KAPLIN ERKEK DİRSEK seç: 
   - 1 adet priz kolye çıkışına,
   - 1 adet sprink/rotor altına gelecek şekilde.
   - Örnek: 12 priz kolye varsa → 24 adet 20 mm kaplin erkek dirsek.
 
 6) KOLLEKTÖR SEÇİMİ
-- Solenoid vana sayısı kadar Arangül MTT-100 kollektör seç.
+- Solenoid vana sayısı kadar Arangül MTT-100 kollektör seç. 
   - Örnek: 3 solenoid vana → 3 adet MTT-100.
 
 7) ANA BORUYA GEÇİŞ ADAPTÖRLERİ
-- Solenoid vana sayısı kadar, vana çıkışından ANA BORUYA geçmek için uygun çapta KAPLIN ERKEK ADAPTÖR seç.
+- Solenoid vana sayısı kadar, vana çıkışından ANA BORUYA geçmek için uygun çapta KAPLIN ERKEK ADAPTÖR seç. 
   - Örnek: 3 solenoid vana → 3 adet kaplin erkek adaptör.
 
 8) KAPLIN TAPA
-- Solenoid vana sayısı kadar, ana boru üzerinde kullanılmak üzere ANA BORU ÇAPINA UYGUN kaplin tapa seç.
+- Solenoid vana sayısı kadar, ana boru üzerinde kullanılmak üzere ANA BORU ÇAPINA UYGUN kaplin tapa seç. 
   - Örnek: 3 solenoid vana → 3 adet kaplin tapa.
 
 9) SİNYAL KABLOSU SEÇİMİ (İstasyon/solenoid sayısına göre)
-- 1–2 solenoid vana → 3 damarlı (3 renk) sinyal kablosu
-- 3–4 solenoid vana → 5 damarlı (5 renk) sinyal kablosu
-- 5–6 solenoid vana → 7 damarlı (7 renk) sinyal kablosu
-- 7–8 solenoid vana → 9 damarlı (9 renk) sinyal kablosu
-- 9–12 solenoid vana → 13 damarlı (13 renk) sinyal kablosu
+- 1–2 solenoid vana → 3 damarlı 
+- 3–4 solenoid vana → 5 damarlı 
+- 5–6 solenoid vana → 7 damarlı 
+- 7–8 solenoid vana → 9 damarlı 
+- 9–12 solenoid vana → 13 damarlı 
 - Kablo uzunluğunu proje durumuna göre yaklaşık metre cinsinden yaz (ör: 25–50 m).
 
 10) VANA KUTUSU SEÇİMİ
-- 1 solenoid vana → 6" vana kutusu
-- 2 solenoid vana → 10" vana kutusu
+- 1 solenoid vana → 6" vana kutusu 
+- 2 solenoid vana → 10" vana kutusu 
 - 3 solenoid vana → 12" vana kutusu
-- 4 solenoid vana → 14" vana kutusu
+- 4 solenoid vana → 14" vana kutusu 
 - Vana sayısına göre TEK tip vana kutusu öner, gereksiz alternatif verme.
 
 11) ANA BORU FİTTİNGLERİ
 - Ana boru hangi çaptaysa, o çapa uygun:
-  - 2 adet dirsek
-  - 2 adet te
-  - 2 adet manşon
+  - 2 adet dirsek 
+  - 2 adet te 
+  - 2 adet manşon 
   ekle.
 - Açıklamada “İş sırasında çıkabilecek ekstra dönüşler/ekler için yedek fittings” diye belirt.
 
 12) LAZIM OLABİLECEK YARDIMCI ÜRÜNLER
 - Aşağıdaki ürünleri “Yardımcı malzemeler” başlığı altında listeye ekle:
-  - Boru kesme makası – 1 adet
-  - Pah açma aparatı – 1 adet
-  - Teflon bant – 2 adet
-  - Elektrik bandı – 1–2 adet
-  - İş eldiveni – 1 çift
-  - Lokma uç seti veya uygun lokma uç – 1 set
+  - Boru kesme makası – 1 adet 
+  - Pah açma aparatı – 1 adet 
+  - Teflon bant – 2 adet 
+  - Elektrik bandı – 1–2 adet 
+  - İş eldiveni – 1 çift 
+  - Lokma uç seti veya uygun lokma uç – 1 set 
 - Bu kalemler için de PRICE_LIST’te varsa fiyat yaz, yoksa “yerelden fiyat alınacak” diye belirt.
 
 13) İŞÇİLİK FİYATI YOK
@@ -1014,53 +1112,6 @@ app.post("/api/register", (req, res) => {
 });
 
 
-// ------------------------------------------------------
-// KULLANICI & ADMIN API'LERİ
-// ------------------------------------------------------
-
-// Kullanıcı kayıt (e-posta + şifre)
-// Body: { email: "...", password: "..." }
-app.post("/api/register", (req, res) => {
-  const { email, password } = req.body || {};
-
-  if (!email || typeof email !== "string") {
-    return res.status(400).json({ error: "Geçersiz e-posta." });
-  }
-
-  if (!password || typeof password !== "string") {
-    return res.status(400).json({ error: "Şifre zorunludur." });
-  }
-
-  const cleanEmail = email.trim().toLowerCase();
-  if (!cleanEmail.includes("@")) {
-    return res.status(400).json({ error: "Geçersiz e-posta formatı." });
-  }
-
-  const users = loadUsers();
-  const existing = users.find((u) => u.email === cleanEmail);
-
-  if (existing) {
-    return res.status(400).json({ error: "Bu e-posta zaten kayıtlı." });
-  }
-
-  const newUser = {
-    email: cleanEmail,
-    password,         // not: gerçek ortamda hash’lenmeli
-    used: 0,
-    limit: 20,        // istersen DEFAULT_DAILY_LIMIT gibi bir sabite bağla
-  };
-
-  users.push(newUser);
-  saveUsers(users);
-
-  res.json({
-    email: newUser.email,
-    used: newUser.used,
-    limit: newUser.limit,
-    remaining: newUser.limit,
-  });
-});
-
 // Kullanıcı login (e-posta + şifre)
 // Body: { email: "...", password: "..." }
 app.post("/api/login", (req, res) => {
@@ -1208,7 +1259,7 @@ app.post("/api/sulama", async (req, res) => {
     );
     return;
   }
-
+  
 // ------------------------------------------------------
 // Fiyat listesi / tablo isteği: kısıtları devre dışı bırak, server-side tablo üret
 // ------------------------------------------------------
@@ -1255,19 +1306,66 @@ if (isPriceListTableRequest(message)) {
   let productContext = "";
   if (relatedProducts.length > 0) {
     productContext =
-      "İLGİLİ ÜRÜNLER VE FİYATLAR (JSON'den):\n" +
-      relatedProducts
-        .map((p) => {
-          const fiyatMetni = getProductPriceText(p).trim();
-          const fiyat =
-            !fiyatMetni || fiyatMetni === "0"
-              ? "Bu ürün için JSON'da fiyat bilgisi yok."
-              : `${fiyatMetni} TL (KDV dahil varsayılabilir)`;
-          return `- SKU: ${p["SKU"] || ""} | Ürün: ${
-            p["Ürün Adı"] || p["Ad"] || ""
-          } | Fiyat: ${fiyat}`;
-        })
-        .join("\n");
+  "İLGİLİ ÜRÜNLER (JSON referansı):\n" +
+  relatedProducts
+    .map(p =>
+      `- SKU: ${p["SKU"]} | Ürün: ${p["Ürün Adı"] || p["Ad"]}`
+    )
+    .join("\n");
+
+  }
+
+
+  // ------------------------------------------------------
+  // Tek ürün fiyat sorusu: GPT'ye gitmeden fiyatı JSON'dan döndür
+  // ------------------------------------------------------
+  if (isSinglePriceQuestion(message)) {
+  const best = relatedProducts?.[0] || null;
+
+  if (!best) {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    return res.send("Fiyatı bulamadım (liste eşleşmesi yok). Lütfen SKU yaz ya da ürün adını daha net belirt.");
+  }
+
+  const sku = best["SKU"] || best["sku"] || "";
+  const name = best["Ürün Adı"] || best["Ad"] || best["name"] || "";
+  const priceText = getProductPriceText(best).trim();
+
+  if (!priceText) {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    return res.send(`Bu ürün bulundu ama JSON'da fiyat alanı boş görünüyor. (SKU: ${sku} | Ürün: ${name})`);
+  }
+
+  const quantity = parseQuantityFromText(message);
+
+  const unitPrice = Number(priceText.replace(",", "."));
+  if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    return res.send(`Fiyat verisi bozuk görünüyor. (SKU: ${sku})`);
+  
+
+
+
+}
+
+
+const totalPrice = unitPrice * quantity;
+
+
+    // Frontend HTML basabildiği için küçük bir tablo dönüyoruz
+    const html = `
+<div style="margin:6px 0 10px 0;">Bulduğum en yakın eşleşmenin KDV dahil fiyatı:</div>
+<table>
+  <thead>
+    <tr><th>SKU</th><th>Ürün</th><th>Birim Fiyat (TL)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>${escapeHtml(sku)}</td><td>${escapeHtml(name)}</td><td>${escapeHtml(priceText)}</td></tr>
+  </tbody>
+</table>
+`;
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    return res.send(html);
   }
 
   let irrigationContextText = "";
@@ -1285,11 +1383,14 @@ if (isPriceListTableRequest(message)) {
 
   const systemPrompt = buildSystemPrompt();
 
-  const messages = [
-    { role: "system", content: JSON.stringify(STEP_CONTROLLER) },
-    { role: "system", content: systemPrompt },
-    { role: "system", content: STYLE_PROMPT },
-  ];
+ const messages = [
+  { role: "system", content: JSON.stringify(STEP_CONTROLLER) },
+  { role: "system", content: systemPrompt },
+  { role: "system", content: STYLE_PROMPT },
+  { role: "system", content: PRICE_STRICT_RULE }, // 👈 BU ŞART
+];
+
+
 
   if (irrigationContextText) {
     messages.push({
@@ -1412,7 +1513,7 @@ app.post("/api/gpt-sulama", async (req, res) => {
       },
     });
   }
-
+  
 // ------------------------------------------------------
 // Fiyat listesi / tablo isteği: kısıtları devre dışı bırak, server-side tablo üret
 // ------------------------------------------------------
@@ -1431,10 +1532,13 @@ if (isPriceListTableRequest(message)) {
 
 
 
-  // Ürün eşleme
+
+
+  // Ürün eşleme (JSON fiyat listesi)
   const relatedProducts = findRelatedProducts(message, 8);
+
   let productContext = "";
-  if (relatedProducts.length > 0) {
+  if (Array.isArray(relatedProducts) && relatedProducts.length > 0) {
     productContext =
       "İLGİLİ ÜRÜNLER VE FİYATLAR (JSON'den):\n" +
       relatedProducts
@@ -1444,20 +1548,65 @@ if (isPriceListTableRequest(message)) {
             !fiyatMetni || fiyatMetni === "0"
               ? "Bu ürün için JSON'da fiyat bilgisi yok."
               : `${fiyatMetni} TL (KDV dahil varsayılabilir)`;
-          return `- SKU: ${p["SKU"] || ""} | Ürün: ${
-            p["Ürün Adı"] || p["Ad"] || ""
-          } | Fiyat: ${fiyat}`;
+          return `- SKU: ${p["SKU"] || ""} | Ürün: ${p["Ürün Adı"] || p["Ad"] || ""} | Fiyat: ${fiyat}`;
         })
         .join("\n");
   }
 
-  const systemPrompt = buildSystemPrompt();
+  // Tek ürün fiyat sorusu: GPT'ye gitmeden JSON'dan cevapla
+  if (isSinglePriceQuestion(message)) {
+  const best = relatedProducts?.[0] || null;
+
+  if (!best) {
+    return res.json({ reply: "Fiyatı bulamadım (liste eşleşmesi yok). Lütfen SKU yaz ya da ürün adını daha net belirt." });
+  }
+
+  const sku = best["SKU"] || best["sku"] || "";
+  const name = best["Ürün Adı"] || best["Ad"] || best["name"] || "";
+  const priceText = getProductPriceText(best).trim();
+
+  if (!priceText) {
+    return res.json({ reply: `Bu ürün bulundu ama JSON'da fiyat alanı boş görünüyor. (SKU: ${sku} | Ürün: ${name})` });
+  }
+
+  const quantity = parseQuantityFromText(message);
+
+  const unitPrice = Number(priceText.replace(",", "."));
+  if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+    return res.json({ reply: `Fiyat verisi bozuk görünüyor. (SKU: ${sku})` });
+  }
+
+
+
+
+
+const totalPrice = unitPrice * quantity;
+
+    const html = `
+<div style="margin:6px 0 10px 0;">Bulduğum en yakın eşleşmenin KDV dahil fiyatı:</div>
+<table>
+  <thead>
+    <tr><th>SKU</th><th>Ürün</th><th>Birim Fiyat (TL)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>${escapeHtml(sku)}</td><td>${escapeHtml(name)}</td><td>${escapeHtml(priceText)}</td></tr>
+  </tbody>
+</table>
+`;
+    return res.json({ reply: html });
+  }
 
   const messages = [
-    { role: "system", content: JSON.stringify(STEP_CONTROLLER) },
-    { role: "system", content: systemPrompt },
-    { role: "system", content: STYLE_PROMPT },
-  ];
+  { role: "system", content: JSON.stringify(STEP_CONTROLLER) },
+  { role: "system", content: systemPrompt },
+  { role: "system", content: STYLE_PROMPT },
+  { role: "system", content: PRICE_STRICT_RULE }, // 👈 BU ŞART
+];
+
+
+
+
+
 
   if (productContext) {
     messages.push({
