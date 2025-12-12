@@ -111,7 +111,7 @@ let PRICE_LIST = [];
 function loadPriceList() {
   try {
     if (!fs.existsSync(PRICE_LIST_FILE)) {
-      console.warn(`Fiyat listesi bulunamadı: ${PRICE_LIST_FILE}`);
+      console.warn("price_list.json bulunamadı.");
       PRICE_LIST = [];
       return;
     }
@@ -119,13 +119,171 @@ function loadPriceList() {
     PRICE_LIST = JSON.parse(raw || "[]");
     console.log(`PRICE_LIST yüklendi, ürün sayısı: ${PRICE_LIST.length}`);
   } catch (e) {
-    console.error(`Fiyat listesi okunamadı: ${PRICE_LIST_FILE}`, e);
+    console.error("price_list.json okunamadı:", e);
     PRICE_LIST = [];
   }
 }
 loadPriceList();
 
+
+// ------------------------------------------------------
+// Fiyat listesi / tablo modu (kısıtları bypass eder, server-side tablo üretir)
+// ------------------------------------------------------
+const PRICE_TABLE_DEFAULT_PAGE_SIZE = 20;
+
+function isPriceListTableRequest(message) {
+  const t = String(message || "").toLowerCase().trim();
+  if (!t) return false;
+
+  // "sonraki 20", "önceki", "sayfa 2" gibi komutları da tablo modu say
+  if (t.startsWith("sonraki") || t.startsWith("önceki") || t.startsWith("sayfa")) return true;
+
+  // fiyat listesi / stok / tablo istemi
+  const keywords = [
+    "fiyat list", "fiyatları listele", "fiyatlari listele", "fiyat tablosu",
+    "stok list", "listeyi göster", "tüm fiyat", "tum fiyat", "tüm ürün",
+    "tum urun", "price_list", "price list"
+  ];
+  return keywords.some((k) => t.includes(k));
+}
+
+function parsePageSizeFromText(t) {
+  const m = String(t || "").match(/\b(\d{1,3})\b/);
+  const n = m ? Number(m[1]) : NaN;
+  if (isFinite(n) && n >= 5 && n <= 100) return n;
+  return PRICE_TABLE_DEFAULT_PAGE_SIZE;
+}
+
+function ensureTableState(userObj) {
+  if (!userObj) return { offset: 0, pageSize: PRICE_TABLE_DEFAULT_PAGE_SIZE };
+  if (!userObj.tableState || typeof userObj.tableState !== "object") {
+    userObj.tableState = { offset: 0, pageSize: PRICE_TABLE_DEFAULT_PAGE_SIZE };
+  }
+  if (!isFinite(Number(userObj.tableState.offset))) userObj.tableState.offset = 0;
+  if (!isFinite(Number(userObj.tableState.pageSize))) userObj.tableState.pageSize = PRICE_TABLE_DEFAULT_PAGE_SIZE;
+  return userObj.tableState;
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function getPriceNumber(p) {
+  const raw = getProductPriceText(p);
+  const n = Number(String(raw || "").replace(",", ".").replace(/[^0-9.]/g, ""));
+  return isFinite(n) ? n : null;
+}
+
+function renderPriceListTableHtml({ rows, offset, pageSize, total }) {
+  const start = offset + 1;
+  const end = Math.min(offset + pageSize, total);
+
+  let html = "";
+  html += `<p><strong>Fiyat Listesi</strong> — ${start}–${end} / ${total}</p>`;
+
+  html += `<table class="malzeme-tablo">`;
+  html += `<thead><tr><th>SKU</th><th>Ürün</th><th>Kategori</th><th>Birim Fiyat (TL)</th></tr></thead>`;
+  html += `<tbody>`;
+
+  for (const p of rows) {
+    const sku = escapeHtml(p["SKU"] || "");
+    const name = escapeHtml(p["Ürün Adı"] || p["Ad"] || "");
+    const cat = escapeHtml(p["Kategori"] || p["Marka"] || "");
+    const price = getPriceNumber(p);
+    const priceText = price === null ? "-" : `${price.toFixed(2)}`;
+    html += `<tr><td>${sku}</td><td>${name}</td><td>${cat}</td><td>${priceText}</td></tr>`;
+  }
+
+  html += `</tbody></table>`;
+
+  const hasPrev = offset > 0;
+  const hasNext = offset + pageSize < total;
+
+  html += `<p style="margin-top:10px;">`;
+  html += `Komutlar: `;
+  if (hasPrev) html += `<strong>önceki</strong> `;
+  if (hasNext) html += `<strong>sonraki</strong> `;
+  html += `| <strong>sayfa 3</strong> | <strong>sonraki 50</strong>`;
+  html += `</p>`;
+
+  return html;
+}
+
+function buildPriceListPageForUser(currentUser, message) {
+  const t = String(message || "").toLowerCase().trim();
+  const state = ensureTableState(currentUser);
+
+  // sayfa komutu: "sayfa 3"
+  if (t.startsWith("sayfa")) {
+    const m = t.match(/sayfa\s*(\d{1,4})/);
+    const page = m ? Number(m[1]) : 1;
+    const pageSize = parsePageSizeFromText(t);
+    state.pageSize = pageSize;
+    state.offset = Math.max(0, (Math.max(1, page) - 1) * pageSize);
+  } else if (t.startsWith("önceki")) {
+    const pageSize = parsePageSizeFromText(t);
+    state.pageSize = pageSize;
+    state.offset = Math.max(0, state.offset - pageSize);
+  } else if (t.startsWith("sonraki")) {
+    const pageSize = parsePageSizeFromText(t);
+    state.pageSize = pageSize;
+    state.offset = Math.min(Math.max(0, PRICE_LIST.length - pageSize), state.offset + pageSize);
+  } else {
+    // yeni "fiyat listesi" isteği: baştan başla
+    state.pageSize = parsePageSizeFromText(t);
+    state.offset = 0;
+  }
+
+  const total = Array.isArray(PRICE_LIST) ? PRICE_LIST.length : 0;
+  const offset = Math.min(Math.max(0, state.offset), Math.max(0, total - 1));
+  const pageSize = state.pageSize || PRICE_TABLE_DEFAULT_PAGE_SIZE;
+
+  const rows = (PRICE_LIST || []).slice(offset, offset + pageSize);
+
+  return {
+    html: renderPriceListTableHtml({ rows, offset, pageSize, total }),
+    state,
+  };
+}
+
 // Basit model: ürün adı, kategori, SKU vb üzerinden text search
+function findRelatedProducts(message, limit = 8) {
+  if (!PRICE_LIST || PRICE_LIST.length === 0) return [];
+
+  const lowerMsg = message.toLowerCase();
+
+  const scored = PRICE_LIST.map((p) => {
+    const name = String(p["Ürün Adı"] || "").toLowerCase();
+    const sku = String(p["SKU"] || "").toLowerCase();
+    const cat = String(p["Kategori"] || "").toLowerCase();
+    const brand = String(p["Marka"] || "").toLowerCase();
+
+    let score = 0;
+    if (name && lowerMsg.includes(name.split(" ")[0])) score += 3;
+    if (sku && lowerMsg.includes(sku)) score += 4;
+    if (cat && lowerMsg.includes(cat)) score += 2;
+    if (brand && lowerMsg.includes(brand)) score += 1;
+
+    if (score === 0 && name) {
+      const tokens = lowerMsg.split(/\s+/);
+      if (tokens.some((t) => name.includes(t))) score += 1;
+    }
+
+    return { product: p, score };
+  });
+
+  return scored
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((x) => x.product);
+}
+
 // Basit kelime temizleme
 function cleanText(raw) {
   if (!raw) return "";
@@ -572,7 +730,7 @@ Bahçede ELEKTRİK YOKSA (PİLLİ sistem, 9 V):
   - Örnek: 12 priz kolye varsa → 24 adet 20 mm kaplin erkek dirsek.
 
 6) KOLLEKTÖR SEÇİMİ
-- Solenoid vana sayısı kadar Rain Bird MTT-100 kollektör seç.
+- Solenoid vana sayısı kadar Arangül MTT-100 kollektör seç.
   - Örnek: 3 solenoid vana → 3 adet MTT-100.
 
 7) ANA BORUYA GEÇİŞ ADAPTÖRLERİ
@@ -1051,6 +1209,41 @@ app.post("/api/sulama", async (req, res) => {
     return;
   }
 
+// ------------------------------------------------------
+// Fiyat listesi / tablo isteği: kısıtları devre dışı bırak, server-side tablo üret
+// ------------------------------------------------------
+if (isPriceListTableRequest(message)) {
+  const page = buildPriceListPageForUser(currentUser || null, message);
+
+  // state'i users.json'a yaz (sadece loginli endpointte anlamlı)
+  try {
+    if (currentUser) {
+      currentUser.tableState = page.state;
+      saveUsers(users);
+    }
+  } catch (_) {}
+
+  // STREAM yerine tek seferde HTML dönelim (frontend zaten HTML basıyor)
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.send(page.html);
+
+  // Hafızaya da yazalım
+  try {
+    if (currentUser) {
+      if (!Array.isArray(currentUser.memory)) currentUser.memory = [];
+      currentUser.memory.push({ role: "user", content: message });
+      currentUser.memory.push({ role: "assistant", content: page.html });
+      if (currentUser.memory.length > 40) {
+        currentUser.memory = currentUser.memory.slice(-40);
+      }
+      saveUsers(users);
+    }
+  } catch (_) {}
+
+  return;
+}
+
+
   // Kullanıcının hafızasından son 20 mesaj
   const history = Array.isArray(currentUser.memory)
     ? currentUser.memory.slice(-20)
@@ -1068,7 +1261,7 @@ app.post("/api/sulama", async (req, res) => {
           const fiyatMetni = getProductPriceText(p).trim();
           const fiyat =
             !fiyatMetni || fiyatMetni === "0"
-              ? "Bu ürün için CSV'de fiyat bilgisi yok."
+              ? "Bu ürün için JSON'da fiyat bilgisi yok."
               : `${fiyatMetni} TL (KDV dahil varsayılabilir)`;
           return `- SKU: ${p["SKU"] || ""} | Ürün: ${
             p["Ürün Adı"] || p["Ad"] || ""
@@ -1220,6 +1413,24 @@ app.post("/api/gpt-sulama", async (req, res) => {
     });
   }
 
+// ------------------------------------------------------
+// Fiyat listesi / tablo isteği: kısıtları devre dışı bırak, server-side tablo üret
+// ------------------------------------------------------
+if (isPriceListTableRequest(message)) {
+  const page = buildPriceListPageForUser(null, message);
+  return res.json({
+    reply: page.html,
+    meta: {
+      category,
+      effectiveCategory,
+      table: true,
+      total: (Array.isArray(PRICE_LIST) ? PRICE_LIST.length : 0),
+    },
+  });
+}
+
+
+
   // Ürün eşleme
   const relatedProducts = findRelatedProducts(message, 8);
   let productContext = "";
@@ -1231,7 +1442,7 @@ app.post("/api/gpt-sulama", async (req, res) => {
           const fiyatMetni = getProductPriceText(p).trim();
           const fiyat =
             !fiyatMetni || fiyatMetni === "0"
-              ? "Bu ürün için CSV'de fiyat bilgisi yok."
+              ? "Bu ürün için JSON'da fiyat bilgisi yok."
               : `${fiyatMetni} TL (KDV dahil varsayılabilir)`;
           return `- SKU: ${p["SKU"] || ""} | Ürün: ${
             p["Ürün Adı"] || p["Ad"] || ""
