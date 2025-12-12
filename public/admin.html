@@ -417,7 +417,7 @@
       }
 
       try {
-        const res = await fetch("/admin/users", {
+        const res = await fetch("/api/admin/users", {
           headers: {
             "x-admin-key": ADMIN_KEY,
           },
@@ -425,9 +425,9 @@
 
         if (!res.ok) {
           setAdminStatus("Yetkisiz veya hata (" + res.status + ")", false);
-          if (res.status === 401) {
-            alert("Admin anahtarı hatalı.");
-          }
+          if (res.status === 401 || res.status === 403) {
+  alert("Admin anahtarı hatalı.");
+}
           return;
         }
 
@@ -567,7 +567,7 @@
       const payload = { email, limit, resetUsed, resetMemory };
 
       try {
-        const res = await fetch("/admin/update-user", {
+        const res = await fetch("/api/admin/update-user", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -682,7 +682,7 @@
       }
       try {
         const res = await fetch(
-          "/admin/user-details?email=" + encodeURIComponent(email),
+  "/api/admin/user-details?email=" + encodeURIComponent(email),
           {
             headers: {
               "x-admin-key": ADMIN_KEY,
