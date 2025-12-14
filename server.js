@@ -59,11 +59,12 @@ passport.deserializeUser((email, done) => {
 // ------------------------------------------------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-import path from "path";
+const path = require("path");
 
 app.get("/price_list.json", (req, res) => {
-  res.sendFile(path.join(process.cwd(), "price_list.json"));
+  res.sendFile(path.join(process.cwd(), "data", "price_list.json"));
 });
+
 
 app.use(express.static(path.join(__dirname, "public")));
 
