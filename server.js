@@ -15,6 +15,20 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const app = express();
 
 // ------------------------------------------------------
+// 1. ADIM: TÜRKÇE KARAKTER DÜZELTME FONKSİYONU (BURAYA YAPIŞTIR)
+// ------------------------------------------------------
+function trToEn(text) {
+  if (!text) return "";
+  return String(text)
+    .replace(/İ/g, "i")
+    .replace(/I/g, "i")
+    .replace(/ı/g, "i")
+    .toLowerCase();
+}
+
+
+
+// ------------------------------------------------------
 // Session + Passport (Google OAuth için)
 // ------------------------------------------------------
 app.use(
@@ -45,6 +59,12 @@ passport.deserializeUser((email, done) => {
 // ------------------------------------------------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+import path from "path";
+
+app.get("/price_list.json", (req, res) => {
+  res.sendFile(path.join(process.cwd(), "price_list.json"));
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 // ------------------------------------------------------
@@ -163,55 +183,50 @@ function loadPriceList() {
 
 loadPriceList();
 
+// loadPriceList fonksiyonunun sonuna ekle:
+console.log("------------------------------------------------");
+console.log("FİYAT LİSTESİ KONTROLÜ:");
+console.log(`Toplam Ürün Sayısı: ${PRICE_LIST.length}`);
+if (PRICE_LIST.length > 0) {
+    const ornekUrun = PRICE_LIST[0];
+    console.log("Örnek Ürün:", JSON.stringify(ornekUrun, null, 2));
+    console.log("Algılanan Fiyat:", getProductPriceText(ornekUrun));
+} else {
+    console.error("!!! DİKKAT: PRICE LIST BOŞ GÖRÜNÜYOR !!! Dosya yolunu kontrol et.");
+}
+console.log("------------------------------------------------");
+
 
 // ------------------------------------------------------
 // Fiyat listesi / tablo modu (kısıtları bypass eder, server-side tablo üretir)
 // ------------------------------------------------------
 const PRICE_TABLE_DEFAULT_PAGE_SIZE = 20;
 
-function isPriceListTableRequest(message) {
+function isPriceListTableRequest(currentUser, message) {
   const t = String(message || "").toLowerCase().trim();
   if (!t) return false;
 
-  // "sonraki 20", "önceki", "sayfa 2" gibi komutları da tablo modu say
-  if (
-    t.startsWith("sonraki") ||
-    t.startsWith("önceki") ||
-    t.startsWith("sayfa")
-  )
-    return true;
+  const isNav =
+    t.startsWith("sonraki") || t.startsWith("önceki") || t.startsWith("sayfa");
 
-  // fiyat listesi / stok / tablo istemi
-  const keywords = [
-    "fiyat list",
-    "fiyatları listele",
-    "fiyatlari listele",
-    "fiyat tablosu",
-    "stok list",
-    "listeyi göster",
-    "tüm fiyat",
-    "tum fiyat",
-    "tüm ürün",
-    "tum urun",
-    "price_list",
-    "price list",
-    "tüm liste",
-    "tum liste",
-    "tüm listeyi ver",
-    "tum listeyi ver",
-    "liste ver",
-    "tam liste",
-    "bütün liste",
-    "butun liste",
-    "malzeme listesi",
-    "malzemeleri listele",
-    "tüm malzeme",
-    "tum malzeme",
-    "teklif tablosu",
-    "teklif listesi",
-  ];
+  // "sonraki / önceki / sayfa" komutları sadece fiyat tablosu modundayken çalışsın
+  if (isNav) {
+    return Boolean(currentUser && currentUser.lastMode === "price_table");
+  }
 
-  return keywords.some((k) => t.includes(k));
+  // Net şekilde fiyat/stok/veritabanı istenmiyorsa: fiyat tablosu sayma
+  const wantsPriceTable = /(fiyat|stok|price_list|price list|veritaban)/.test(t);
+
+  // Proje/malzeme/teklif gibi niyet varsa: fiyat tablosu sayma (yanlış tetiklenmesin)
+  const looksLikeProject =
+    /(malzeme|teklif|proje|zon|zone|bahçe|bahce|sprink|rotor|damla|hidrofor|vana|boru)/.test(
+      t
+    );
+
+  if (!wantsPriceTable) return false;
+  if (looksLikeProject && !/(fiyat|stok)/.test(t)) return false;
+
+  return true;
 }
 
 function parsePageSizeFromText(t) {
@@ -229,6 +244,29 @@ function ensureTableState(userObj) {
   if (!isFinite(Number(userObj.tableState.offset))) userObj.tableState.offset = 0;
   if (!isFinite(Number(userObj.tableState.pageSize))) userObj.tableState.pageSize = PRICE_TABLE_DEFAULT_PAGE_SIZE;
   return userObj.tableState;
+}
+
+
+function contextualizeUserMessage(currentUser, message) {
+  const t = String(message || "").toLowerCase().trim();
+  const isFollowUp = Boolean(
+    currentUser &&
+      currentUser.lastMode === "project" &&
+      /(liste|kalan|eksik|devam|başka|baska|ürün|urun|bu kadar|nerde)/.test(t)
+  );
+
+  if (!isFollowUp) return message;
+
+  return (
+    "ÖNCEKİ PROJEYE DEVAM: Kullanıcı önceki mesajlarda bir bahçe sulama projesi için malzeme listesi çıkarttı. " +
+    "Şimdi takip sorusu soruyor (ör: 'liste bu kadar mı', 'başka ürün yok mu', 'listenin kalanı nerde'). " +
+    "Aynı proje için TAM/eksiksiz malzeme listesini tamamla. " +
+    "Bağlantı ve yardımcı malzemeleri de ekle: priz kolye, kaplin/dış dişli dirsek 20x1/2 (priz kolyenin 2 katı kuralı), " +
+    "adaptör/rekor/nipel/teflon, vana kutusu, filtre (disk/elek), basınç regülatörü gerekiyorsa, çekvalf, manometre, " +
+    "hidrofor çıkış bağlantıları, kablo ek mufları (WC20), kontrol ünitesi, vanalar, sulama kablosu, yağmur sensörü opsiyon gibi. " +
+    "Fiyat uydurma; listede yoksa fiyat '-' kalsın. Çıktıyı HTML tablo formatında ver.\n\n" +
+    "KULLANICI MESAJI: " + message
+  );
 }
 
 function getPriceBySku(sku) {
@@ -441,75 +479,136 @@ function isUserLimitExceeded(user) {
 // getProductPriceText – fiyat metnini ortak fonksiyon
 // ------------------------------------------------------
 function getProductPriceText(p) {
+  // Olası tüm fiyat kolon isimlerini dene
   const raw =
-    p["Fiyat TL (KDV dahil)"] ??
-    p["Fiyat TL (KDV Dahil)"] ??
-    p["Fiyat (KDV dahil)"] ??
-    p["Fiyat (KDV Dahil)"] ??
-    p["Fiyat (TL)"] ??
-    p["Fiyat TL"] ??
-    p["Fiyat"] ??
-    p["price"] ??
-    p["Price"] ??
-    "";
+    p["Fiyat TL (KDV dahil)"] || // Senin JSON'daki asıl alan
+    p["Fiyat TL (KDV Dahil)"] ||
+    p["Fiyat (KDV dahil)"] ||
+    p["Fiyat"] ||
+    p["Price"] ||
+    p["Tutar"] ||
+    "0";
 
-  if (raw == null) return "";
+  if (!raw) return "";
 
-  // "33,98" -> "33.98"
   let s = String(raw).trim();
-  if (!s) return "";
-
-  // Binlik ayırıcı vs. gelebilir diye normalize:
-  // "1.234,56" -> "1234.56"
-  s = s.replace(/\./g, "").replace(",", ".");
+  
+  // "420,00" formatını "420.00" formatına çevir (JS number formatı)
+  // Binlik ayırıcı (.) varsa kaldır, ondalık ayırıcı (,) varsa nokta yap
+  if (s.includes(",")) {
+      s = s.replace(/\./g, "").replace(",", "."); 
+  }
 
   const n = Number(s);
   if (!Number.isFinite(n) || n <= 0) return "";
 
-  // İstersen burada formatlayabilirsin
-  return n.toFixed(2);
+  return n.toFixed(2); // "420.00" string olarak döner
 }
 
 
 // ------------------------------------------------------
-// Basit ürün arama – PRICE_LIST içinden
+// GELİŞMİŞ ÜRÜN ARAMA (Priority Scoring - FITTINGS GÜNCELLEMESİ)
 // ------------------------------------------------------
+function findRelatedProducts(query, limit = 60) {
+  // 1. Sorguyu temizle ve normalize et
+  let cleanQuery = "";
+  if (typeof trToEn === "function") {
+      cleanQuery = trToEn(query);
+  } else {
+      cleanQuery = String(query).toLowerCase();
+  }
 
-function findRelatedProducts(query, limit = 8) {
+  // 2. Gizli Anahtar Kelimeler (Kullanıcı yazmasa bile aranacaklar)
+  const coreKeywords = [
+    "tm2", "esp", "rotor", "3504", "5004", 
+    "sprey", "sprink", "vana", "100-dv", "dv", "solenoid",
+    "kablo", "sinyal", "renk", 
+    "boru", "pe100", "damla", "16mm", "20mm", 
+    "adaptör", "kollektör", "priz", "kutu", 
+    "rain bird", "hunter",
+    "dirsek", "te", "manşon", "nipel", "kör tapa", "kilitli", "conta", "kaplin"
+  ];
 
-  let q = String(query).toLowerCase();
+  // Kullanıcı sorgusu + çekirdek kelimeler
+  const searchString = cleanQuery + " " + coreKeywords.join(" ");
+  
+  // Kelimeleri tekilleştir
+  let words = searchString
+    .replace(/(\d+)/g, " $1 ") 
+    .replace(/[.,"\-]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length > 1);
+  
+  // trToEn varsa uygula
+  if (typeof trToEn === "function") {
+      words = words.map(w => trToEn(w));
+  }
+  
+  words = [...new Set(words)]; 
 
-  // Sayıları harflerden ayır → “tm24” → “tm 2 4”
-  q = q
-    .replace(/(\d+)/g, " $1 ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  // Sorgu kelimeleri
-  const words = q.split(" ").filter((w) => w.length > 1);
+  if (words.length === 0) return [];
 
   const scored = PRICE_LIST.map((p) => {
+    // Veri güvenliği ve temizlik
     const name = String(p["Ürün Adı"] || p["Ad"] || "").toLowerCase();
     const sku = String(p["SKU"] || p["Kod"] || "").toLowerCase();
-    const desc = String(p["Açıklama"] || p["Description"] || "").toLowerCase();
+    const cat = String(p["Kategori"] || p["Marka"] || "").toLowerCase();
+    const desc = String(p["Açıklama"] || "").toLowerCase();
+
+    // trToEn varsa burada da kullan (eşleşme garantisi için)
+    let nInfo = name + " " + sku + " " + cat + " " + desc;
+    if (typeof trToEn === "function") {
+        nInfo = trToEn(nInfo);
+    }
 
     let score = 0;
 
+    // ARAMA ALGORİTMASI (Temel Puanlama)
     for (const w of words) {
-      if (name.includes(w)) score += 3;
-      if (sku.includes(w)) score += 4;
-      if (desc.includes(w)) score += 1;
+      if (nInfo.includes(w)) {
+        if (sku.includes(w)) score += 50;       
+        else if (name.includes(w)) score += 10; 
+        else score += 1;
+      }
+    }
+
+    // *** KRİTİK NOKTA: BONUS PUANLAMA (TORPİL LİSTESİ) ***
+    
+    // 1. Fittings ve Ek Parçalar (YENİ EKLENDİ - +130 PUAN)
+    // Bunları vanaların önüne geçiriyoruz ki liste dolunca dışarıda kalmasınlar.
+    if (name.includes("dirsek") || name.includes("manşon") || name.includes("nipel") || 
+        name.includes("kaplin") || name.includes("priz") || name.includes("adaptör") || 
+        name.includes("tapa") || name.includes("kilitli")) {
+      score += 130; 
+    }
+
+    // 2. Kablo ve Borular (Altyapı - +150 PUAN)
+    if (name.includes("kablo") || name.includes("sinyal") || name.includes("ssk")) {
+      score += 150; 
+    }
+    if (name.includes("boru") && (name.includes("damla") || name.includes("pe") || name.includes("kang"))) {
+      score += 140; 
+    }
+
+    // 3. Kontrol Üniteleri ve Vanalar
+    if (name.includes("kontrol") || name.includes("tm2") || name.includes("vana") || name.includes("dv")) {
+      score += 100; 
+    }
+
+    // 4. Rotor ve Sprinkler
+    if (name.includes("rotor") || name.includes("3504") || name.includes("sprink")) {
+      score += 80;
     }
 
     return { p, score };
   });
 
+  // Puanı yüksek olanları en üste al ve limiti uygula
   return scored
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map((x) => x.p);
-
 }
 // ------------------------------------------------------
 // Kategori sınıflandırma (sulama mı değil mi?)
@@ -622,54 +721,33 @@ function classifyIrrigationCategory(message) {
 // ------------------------------------------------------
 // CEVAP STİLİ (ChatGPT mantığında kısa, adım adım)
 // ------------------------------------------------------
-const STYLE_PROMPT = `
-HER CEVAPTA AŞAĞIDAKİ KURALLARA UY:
+// ESKİ STYLE_PROMPT ve PRICE_STRICT_RULE YERİNE BUNU KULLAN:
 
-1) Fiyatlı malzeme listesi istendiğinde SADECE HTML TABLO kullan.
-   Markdown, pipe tablo, düz liste, format karışımı ASLA üretme.
+const SYSTEM_INSTRUCTIONS = `
+Sen "Sulama Asistanı"sın. Peyzaj ve sulama projelerinde uzman bir yapay zekasın.
 
-2) HTML tablo iskelesi ŞU OLACAK (ASLA DEĞİŞTİRME):
+GÖREVİN:
+1. Kullanıcıyla sohbet et, ihtiyaçlarını analiz et.
+2. Ürün önerilerinde bulun.
+3. Fiyat sorulduğunda veya liste istendiğinde SADECE sana sağlanan "İLGİLİ ÜRÜNLER" verisini kullan.
+
+KURALLAR:
+1. FİYATLAR: Sana sistem tarafından verilen "İLGİLİ ÜRÜNLER" listesinde fiyat varsa onu yaz. Listede fiyat yoksa veya ürün listede yoksa asla kafandan fiyat uydurma. Tabloda fiyat yerine "-" yaz.
+2. HTML TABLO: Ürün listesi istendiğinde çıktı formatın ŞU HTML YAPISINDA OLMALIDIR (Markdown değil, saf HTML):
+
 <table class="malzeme-tablo">
   <thead>
-    <tr>
-      <th>Grup</th>
-      <th>Ürün</th>
-      <th>Açıklama</th>
-      <th>Adet / Metre</th>
-      <th>Birim Fiyat (TL)</th>
-      <th>Tutar (TL)</th>
-    </tr>
+    <tr><th>SKU</th><th>Ürün</th><th>Açıklama</th><th>Miktar</th><th>Birim Fiyat</th><th>Tutar</th></tr>
   </thead>
   <tbody>
-    <!-- Ürün satırları -->
-  </tbody>
+    </tbody>
 </table>
 
-3) Her ürün bir <tr> içinde olacak. Her <td> doğru sırada olacak.
-4) Fiyat yoksa:
-   - Birim fiyat: "-"
-   - Tutar: "Teklifte belirlenecek"
-
-5) Tablo bittikten sonra şu genel toplam bloğunu üret:
-<p class="genel-toplam">
-  <strong>Genel Toplam (KDV dahil):</strong> XXX TL
-</p>
-
-6) Teknik açıklama veya tasarım anlatımı tablodan önce olacak,
-   fakat HTML tablo ile karışmayacak.
-   Tablonun önüne sadece sade metin paragrafı yaz.
-
-7) Asla "<td> ürün >" gibi bozuk tag, eksik kapanan <td> üretme.
-   Model çıktısı düzenli HTML olacak.
+3. MİKTAR: Kullanıcı miktar belirtmediyse varsayılan 1 al veya mantıklı bir miktar öner.
+4. YORUM: Tablodan önce teknik bir açıklama yapabilirsin. İşçilik fiyatı verme.
+5. NETLİK: Kısa ve öz konuş.
 `;
 
-const PRICE_STRICT_RULE = `
-KESİN KURAL (FİYAT):
-- Kullanıcı fiyat/liste/teklif isterse ASLA fiyat yazma, ASLA TL yazma.
-- Sadece ilgili ürünlerin SKU listesini (maks 20 adet) JSON formatında döndür:
-  {"skus":["ARCPK2534","..."]}
-- Listede yoksa {"skus":[]} döndür.
-`;
 
 
 
@@ -692,7 +770,7 @@ function isSinglePriceQuestion(message) {
   }
 
   // liste/tablo/sayfalama ise tek ürün fiyatı sayma
-  if (isPriceListTableRequest(t)) return false;
+  if (isPriceListTableRequest(null, t)) return false;
   if (/liste|tablo|tüm|tum|stok|malzeme/.test(t)) return false;
 
   return true;
@@ -1218,11 +1296,27 @@ app.post("/api/sulama", async (req, res) => {
   const category = classifyIrrigationCategory(message);
   let effectiveCategory = category;
 
-  const strongIrrigationHints = ["sprink", "sulama", "damla", "PE100", "vana"];
+  const strongIrrigationHints = ["sprink", "sulama", "damla", "PE100", "vana", "malzeme", "teklif", "liste", "kalan", "devam", "ürün", "urun"];
   const hasStrongHint = strongIrrigationHints.some((k) =>
     message.toLowerCase().includes(k.toLowerCase())
   );
   if (category !== "IRRIGATION" && hasStrongHint) {
+    effectiveCategory = "IRRIGATION";
+  }
+
+  // Proje devam soruları (liste/kalan/devam/başka ürün) geldiyse ve kullanıcı proje modundaysa, sulama kabul et
+  const __t = String(message || "").toLowerCase();
+  const __isProjectFollowUp = Boolean(
+    currentUser &&
+      currentUser.lastMode === "project" &&
+      /(liste|kalan|eksik|devam|başka|baska|ürün|urun|bu kadar|nerde)/.test(__t)
+  );
+  if (effectiveCategory === "NON_IRRIGATION" && __isProjectFollowUp) {
+    effectiveCategory = "IRRIGATION";
+  }
+
+  // Fiyat/stok/veritabanı tablosu isteniyorsa NON_IRRIGATION'a düşme
+  if (effectiveCategory === "NON_IRRIGATION" && isPriceListTableRequest(currentUser, message)) {
     effectiveCategory = "IRRIGATION";
   }
 
@@ -1238,13 +1332,14 @@ app.post("/api/sulama", async (req, res) => {
 // ------------------------------------------------------
 // Fiyat listesi / tablo isteği: kısıtları devre dışı bırak, server-side tablo üret
 // ------------------------------------------------------
-if (isPriceListTableRequest(message)) {
+if (isPriceListTableRequest(currentUser, message)) {
   const page = buildPriceListPageForUser(currentUser || null, message);
 
   // state'i users.json'a yaz (sadece loginli endpointte anlamlı)
   try {
     if (currentUser) {
       currentUser.tableState = page.state;
+      currentUser.lastMode = "price_table";
       saveUsers(users);
     }
   } catch (_) {}
@@ -1277,7 +1372,7 @@ if (isPriceListTableRequest(message)) {
   const hasHistory = Array.isArray(history) && history.length > 0;
 
   // Ürün eşleme
-  const relatedProducts = findRelatedProducts(message, 8);
+  const relatedProducts = findRelatedProducts(message, 60);
   let productContext = "";
   if (relatedProducts.length > 0) {
     productContext =
@@ -1358,53 +1453,43 @@ const totalPrice = unitPrice * quantity;
 
   const systemPrompt = buildSystemPrompt();
 
- const messages = [
-  { role: "system", content: JSON.stringify(STEP_CONTROLLER) },
-  { role: "system", content: systemPrompt },
-  { role: "system", content: STYLE_PROMPT },
-  { role: "system", content: PRICE_STRICT_RULE }, // 👈 BU ŞART
-];
+const messages = [
+    { role: "system", content: SYSTEM_INSTRUCTIONS }, // Yeni temiz prompt
+    // Step controller opsiyonel, kalabilir
+    { role: "system", content: JSON.stringify(STEP_CONTROLLER) }, 
+  ];
 
-
-
+  // Context ekleme (Aynı kalabilir)
   if (irrigationContextText) {
     messages.push({
       role: "assistant",
-      content:
-        "(Bu içerik önceki konuşmalara dair özet bilgidir, kullanıcıya aynen gösterme.)\n\n" +
-        irrigationContextText,
+      content: "HATIRLATMA (Önceki Konuşmalar):\n" + irrigationContextText,
     });
   }
 
+  // Ürünleri açıkça veriyoruz
   if (productContext) {
     messages.push({
-      role: "assistant",
-      content:
-        "(Bu tablo yalnızca senin dahili referansındır, kullanıcıya ASLA aynen yazma) \n" +
-        "Kullanıcı FİYAT sorarsa bu tabloyu referans alabilirsin. Fiyat sormazsa TL bilgisi verme.\n\n" +
-        productContext,
+      role: "system", // Assistant yerine system olarak vermek daha otoriterdir.
+      content: 
+        "AŞAĞIDAKİ ÜRÜN VERİTABANINI KULLANARAK CEVAP VER.\n" +
+        "Bu listede olmayan ürünler için 'Stoklarımızda bulunmamaktadır' de.\n" +
+        "LİSTE:\n" + productContext
     });
   }
+
+  const messageForModel = contextualizeUserMessage(currentUser, message);
 
   messages.push({
     role: "user",
-    content: JSON.stringify({ soru: message, email: user.email }),
+    content: messageForModel, // takip sorularında projeye devam ettirmek için mesajı zenginleştiriyoruz
   });
 
-  // Kullanım arttır
-  currentUser.used += 1;
-  saveUsers(users);
-
   try {
-    // *** BURADAN İTİBAREN STREAM ***
-    res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    res.setHeader("Transfer-Encoding", "chunked");
-
     const completion = await client.chat.completions.create({
-      model: "gpt-4.1",
+      model: "gpt-4o", // MODEL İSMİNİ DÜZELT
       messages,
-      max_tokens: STEP_CONTROLLER.maxTokens,
-      temperature: 0.4,
+      temperature: 0.3, // Yaratıcılığı biraz kıs, daha tutarlı olsun
       stream: true,
     });
 
@@ -1431,6 +1516,10 @@ const totalPrice = unitPrice * quantity;
     if (!Array.isArray(currentUser.memory)) currentUser.memory = [];
     currentUser.memory.push({ role: "user", content: message });
     currentUser.memory.push({ role: "assistant", content: fullText });
+
+    // Kullanıcı proje/malzeme listesi aldıysa takip sorularını sulama kabul etmek için mod tut
+    const __looksLikeProject = /(<table|sku|malzeme|vana|boru|istasyon|zone|zon|sprink|rotor|damla)/i.test(fullText);
+    currentUser.lastMode = __looksLikeProject ? "project" : (currentUser.lastMode || "chat");
 
     if (currentUser.memory.length > 40) {
       currentUser.memory = currentUser.memory.slice(-40);
@@ -1469,11 +1558,16 @@ app.post("/api/gpt-sulama", async (req, res) => {
   let effectiveCategory = category;
 
   // Sulama ile çok alakalı kelimeler varsa, NON_IRRIGATION bile dese IRRIGATION kabul et
-  const strongIrrigationHints = ["sprink", "sulama", "damla", "PE100", "vana"];
+  const strongIrrigationHints = ["sprink", "sulama", "damla", "PE100", "vana", "malzeme", "teklif", "liste", "kalan", "devam", "ürün", "urun"];
   const hasStrongHint = strongIrrigationHints.some((k) =>
     message.toLowerCase().includes(k.toLowerCase())
   );
   if (category !== "IRRIGATION" && hasStrongHint) {
+    effectiveCategory = "IRRIGATION";
+  }
+
+  // Fiyat/stok/veritabanı tablosu isteniyorsa NON_IRRIGATION'a düşme
+  if (effectiveCategory === "NON_IRRIGATION" && isPriceListTableRequest(null, message)) {
     effectiveCategory = "IRRIGATION";
   }
 
@@ -1492,7 +1586,7 @@ app.post("/api/gpt-sulama", async (req, res) => {
 // ------------------------------------------------------
 // Fiyat listesi / tablo isteği: kısıtları devre dışı bırak, server-side tablo üret
 // ------------------------------------------------------
-if (isPriceListTableRequest(message)) {
+if (isPriceListTableRequest(null, message)) {
   const page = buildPriceListPageForUser(null, message);
   return res.json({
     reply: page.html,
@@ -1510,7 +1604,7 @@ if (isPriceListTableRequest(message)) {
 
 
   // Ürün eşleme (JSON fiyat listesi)
-  const relatedProducts = findRelatedProducts(message, 8);
+  const relatedProducts = findRelatedProducts(message, 60);
 
   let productContext = "";
   if (Array.isArray(relatedProducts) && relatedProducts.length > 0) {
@@ -1575,7 +1669,6 @@ const totalPrice = unitPrice * quantity;
   { role: "system", content: JSON.stringify(STEP_CONTROLLER) },
   { role: "system", content: systemPrompt },
   { role: "system", content: STYLE_PROMPT },
-  { role: "system", content: PRICE_STRICT_RULE }, // 👈 BU ŞART
 ];
 
 
@@ -1593,11 +1686,25 @@ const totalPrice = unitPrice * quantity;
     });
   }
 
-  // GPT tarafı için sahte ama sabit bir email kullanıyoruz
+  
+// GPT tarafı için sahte ama sabit bir email kullanıyoruz
+  // Proje takip sorularında (liste/kalan/devam/başka ürün) aynı projeye devam ettirmek için soruyu zenginleştir
+  let questionForGpt = message;
+  const __t2 = String(message || "").toLowerCase();
+  const __followUp2 = /(liste|kalan|eksik|devam|başka|baska|ürün|urun|bu kadar|nerde)/.test(__t2);
+  if (__followUp2) {
+    questionForGpt =
+      "ÖNCEKİ PROJEYE DEVAM: Kullanıcı mevcut proje için malzeme listesinin devamını istiyor. " +
+      "Eksik bağlantı ve yardımcı malzemeleri de ekleyerek TAM malzeme listesini tamamla. " +
+      "Fiyat uydurma; listede yoksa '-' bırak. HTML tablo formatında yaz.\n\n" +
+      "KULLANICI MESAJI: " +
+      message;
+  }
+
   messages.push({
     role: "user",
     content: JSON.stringify({
-      soru: message,
+      soru: questionForGpt,
       email: "gpt@sulamaasistani.com",
       mode: mode || null,
       designData: designData || null,
